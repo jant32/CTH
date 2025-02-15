@@ -28,23 +28,48 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
             <?php endforeach; ?>
         </select>
     </p>
+
+    <!-- CSS für Lade-Indikator (kann alternativ in eine separate CSS-Datei ausgelagert werden) -->
     <style>
-        /* Stellt sicher, dass das Dropdown genau die gleiche Breite wie das Kundenfeld hat */
-        #customer_type {
-            width: 100% !important;
-            max-width: 100% !important;
-            box-sizing: border-box;
+        /* Lade-Indikator: Dimmt den Container und zeigt einen Spinner */
+        .woocommerce_order_items.loading, #order_line_items.loading {
+            opacity: 0.5;
+            position: relative;
         }
-        .order_data_column .form-field label {
-            font-weight: normal;
-            display: block;
-            margin-bottom: 5px;
-            margin-top: 10px;
+        .woocommerce_order_items.loading:after, #order_line_items.loading:after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 40px;
+            height: 40px;
+            margin: -20px 0 0 -20px;
+            border: 4px solid #ccc;
+            border-top-color: #333;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 1000;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
+
     <script type="text/javascript">
         function updateCustomerTypeAJAX(orderId) {
             var customerType = jQuery('#customer_type').val();
+            
+            // Container, in dem die Bestellpositionen (Artikel) dargestellt werden.
+            // Passen Sie ggf. den Selektor an, falls Ihre Seite einen anderen Container verwendet.
+            var $orderItemsContainer = jQuery('#order_line_items');
+            if (!$orderItemsContainer.length) {
+                $orderItemsContainer = jQuery('.woocommerce_order_items');
+            }
+            
+            // Lade-Indikator: Container dimmen & Spinner anzeigen
+            $orderItemsContainer.addClass('loading');
+            
             jQuery.ajax({
                 type: 'POST',
                 url: ajaxurl,
@@ -55,14 +80,17 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
                     // Optional: nonce: 'hier_wenn_gewünscht'
                 },
                 success: function(response) {
+                    // Lade-Indikator entfernen
+                    $orderItemsContainer.removeClass('loading');
                     if(response.success){
-                        // Seite aktualisieren, damit die neuen Werte (u.a. Totals) angezeigt werden
+                        // Seite aktualisieren, damit neue Werte (u.a. Totals) angezeigt werden
                         location.reload();
                     } else {
                         alert('Fehler beim Aktualisieren der Kundenart.');
                     }
                 },
                 error: function() {
+                    $orderItemsContainer.removeClass('loading');
                     alert('AJAX-Fehler beim Aktualisieren der Kundenart.');
                 }
             });
