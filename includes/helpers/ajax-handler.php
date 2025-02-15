@@ -3,6 +3,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Fehleranzeige unterdrücken (nur für diesen Handler – in der Produktion idealerweise global in wp-config.php einstellen)
+ini_set('display_errors', 0);
+error_reporting(0);
+
 if (ob_get_length()) {
     ob_clean();
 }
