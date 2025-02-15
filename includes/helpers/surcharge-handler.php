@@ -12,16 +12,17 @@ if ( ob_get_length() ) {
     ob_clean();
 }
 
-// Debugging: AJAX-Handler wird geladen
-error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: ajax-handler.php geladen" );
+// Debugging: surcharge-handler.php geladen
+error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: surcharge-handler.php geladen" );
 
 // AJAX-Hooks für die Aktualisierung des Zuschlags
 add_action( 'wp_ajax_update_surcharge', 'update_surcharge_handler' );
 add_action( 'wp_ajax_nopriv_update_surcharge', 'update_surcharge_handler' );
 
 /**
- * AJAX-Handler: Aktualisiert den Kundenart-Wert (z. B. in der Session)
- * und gibt eine JSON-Antwort zurück.
+ * AJAX-Handler: Aktualisiert den Kundenart-Wert.
+ * - Im Frontend wird der Wert in der Session gespeichert.
+ * - Im Admin-Bereich (Order-Details) wird – falls eine order_id übergeben wird – der Order-Meta aktualisiert.
  */
 function update_surcharge_handler() {
     // Alle aktiven Output-Puffer leeren
@@ -29,35 +30,42 @@ function update_surcharge_handler() {
         ob_end_clean();
     }
     
+    // Prüfen, ob ein Warenkorb vorhanden ist (normalerweise nur im Frontend)
     if ( ! WC()->cart ) {
-        error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: Warenkorb nicht geladen." );
-        wp_send_json_error( [ 'message' => 'Warenkorb nicht geladen' ] );
+        // Im Admin-Bereich ist der Warenkorb oft nicht verfügbar.
+        if ( is_admin() ) {
+            if ( isset( $_POST['order_id'] ) ) {
+                $order_id = intval( $_POST['order_id'] );
+                $customer_type = isset( $_POST['customer_type'] ) ? sanitize_text_field( $_POST['customer_type'] ) : 'verein_ssb';
+                update_post_meta( $order_id, '_customer_type', $customer_type );
+                error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: Admin – Kundenart für Bestellung $order_id aktualisiert auf: " . $customer_type );
+                wp_send_json_success( [ 'message' => 'Kundenart aktualisiert (Admin)' ] );
+            } else {
+                wp_send_json_success( [ 'message' => 'Kundenart aktualisiert (Admin, kein order_id)' ] );
+            }
+        } else {
+            error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: Warenkorb nicht geladen." );
+            wp_send_json_error( [ 'message' => 'Warenkorb nicht geladen' ] );
+        }
         return;
     }
     
-    // Kundenart aus POST übernehmen, Standard: 'verein_ssb'
+    // Im Frontend: Kundenart aus POST übernehmen, Standard: 'verein_ssb'
     $customer_type = isset( $_POST['customer_type'] ) ? sanitize_text_field( $_POST['customer_type'] ) : 'verein_ssb';
-    
-    // Speichere den Wert in der Session – so steht er beim nächsten Neuberechnen des Warenkorbs zur Verfügung
     WC()->session->set( 'customer_type', $customer_type );
-    
-    // Optional: Falls du auch in der Bestellung diesen Wert speichern möchtest, kannst du hier Order‑Meta aktualisieren.
-    // z.B.: update_post_meta( $order_id, '_customer_type', $customer_type );
-    
     error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: AJAX – Kundenart aktualisiert auf: " . $customer_type );
     
-    // Nochmals sicherstellen, dass keine Ausgabe im Buffer ist
     while ( ob_get_level() > 0 ) {
         ob_end_clean();
     }
     
-    // Sende die JSON-Antwort
     wp_send_json_success( [ 'message' => 'Kundenart aktualisiert' ] );
 }
 
 /**
  * Hook: Berechnet den Zuschlag im Warenkorb
  * basierend auf dem in der Session gespeicherten Kundenart-Wert.
+ * Dieser Hook wird nur im Frontend ausgeführt.
  */
 add_action( 'woocommerce_cart_calculate_fees', 'apply_surcharge_to_cart_handler' );
 function apply_surcharge_to_cart_handler() {
@@ -65,9 +73,9 @@ function apply_surcharge_to_cart_handler() {
         return;
     }
     
-    $cart           = WC()->cart;
+    $cart = WC()->cart;
     // Kundenart aus der Session; falls nicht gesetzt, Standard 'verein_ssb'
-    $customer_type  = WC()->session->get( 'customer_type', 'verein_ssb' );
+    $customer_type = WC()->session->get( 'customer_type', 'verein_ssb' );
     $surcharge_name = 'Kundenart-Zuschlag';
     
     error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: Zuschlagsberechnung im Warenkorb gestartet für Kundenart: " . $customer_type );
