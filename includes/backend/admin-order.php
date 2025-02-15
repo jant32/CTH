@@ -20,16 +20,14 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
     }
     $customer_types = get_all_customer_types();
     ?>
-    <div class="order_data_column">
-        <p class="form-field form-field-wide">
-            <label for="customer_type" style="font-weight: normal;"><?php esc_html_e('Kundenart:', 'woocommerce'); ?></label>
-            <select name="customer_type" id="customer_type" class="wc-enhanced-select" style="width: 100%;" onchange="updateCustomerTypeAJAX(<?php echo esc_js($order_id); ?>);">
-                <?php foreach ($customer_types as $key => $label) : ?>
-                    <option value="<?php echo esc_attr($key); ?>" <?php selected($customer_type, $key); ?>><?php echo esc_html($label); ?></option>
-                <?php endforeach; ?>
-            </select>
-        </p>
-    </div>
+    <p class="form-field form-field-wide">
+        <label for="customer_type"><?php esc_html_e('Kundenart:', 'woocommerce'); ?></label>
+        <select name="customer_type" id="customer_type" class="wc-enhanced-select" style="width: 100%;">
+            <?php foreach (get_all_customer_types() as $key => $label) : ?>
+                <option value="<?php echo esc_attr($key); ?>" <?php selected($customer_type, $key); ?>><?php echo esc_html($label); ?></option>
+            <?php endforeach; ?>
+        </select>
+    </p>
     <style>
         /* Stellt sicher, dass das Dropdown genau die gleiche Breite wie das Kundenfeld hat */
         #customer_type {
