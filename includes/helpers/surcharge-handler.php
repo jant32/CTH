@@ -11,9 +11,11 @@ if (isset($wp_filter['woocommerce_cart_calculate_fees'])) {
     error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Hook 'woocommerce_cart_calculate_fees' ist registriert: " . count($wp_filter['woocommerce_cart_calculate_fees']->callbacks) . " Mal.");
 }
 
-add_action('woocommerce_cart_calculate_fees', function() {
-    error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Hook 'woocommerce_cart_calculate_fees' ausgeführt von: " . print_r(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5), true));
-}, 999);
+// Doppelte Registrierung verhindern
+if (has_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge')) {
+    remove_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge');
+}
+add_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge', 20); // Priorität 20, um andere Hooks vorher laufen zu lassen
 
 // Funktion zum Anwenden des Zuschlags
 function apply_customer_type_surcharge() {
@@ -35,12 +37,10 @@ function apply_customer_type_surcharge() {
     error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Zuschlagsberechnung gestartet für Kundenart: " . $customer_type);
 
     // Vorhandene Zuschläge entfernen, bevor neue hinzugefügt werden
-    $existing_surcharge = false;
     foreach ($cart->get_fees() as $fee_key => $fee) {
         if ($fee->name === $surcharge_name) {
             error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Entferne alten Zuschlag (Key: $fee_key).");
             unset(WC()->cart->fees_api()->fees[$fee_key]);
-            $existing_surcharge = true;
         }
     }
 
@@ -81,10 +81,7 @@ function apply_customer_type_surcharge() {
     error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Aktuelle Gebühren nach Berechnung: " . print_r($cart->get_fees(), true));
 }
 
-// Hook korrekt registrieren, falls noch nicht geschehen
-add_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge', 1);
-
-add_action('woocommerce_cart_calculate_fees', function() {
-    global $woocommerce;
-    error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Aktuelle Gebühren im Warenkorb: " . print_r(WC()->cart->get_fees(), true));
+// Nach der Berechnung prüfen, ob der Zuschlag bestehen bleibt
+add_action('woocommerce_after_calculate_totals', function() {
+    error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Endgültige Gebühren im Warenkorb: " . print_r(WC()->cart->get_fees(), true));
 }, 10);
