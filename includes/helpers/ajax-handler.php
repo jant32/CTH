@@ -1,86 +1,39 @@
 <?php
-add_action('wp_ajax_update_order_customer_type', function() {
-    if (!isset($_POST['order_id'], $_POST['customer_type'])) {
-        wp_send_json_error(['message' => 'Ungültige Anfrage']);
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+// Debugging: AJAX-Handler wird aufgerufen
+error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: ajax-handler.php geladen");
+
+// AJAX-Hook für die Aktualisierung des Zuschlags
+add_action('wp_ajax_update_surcharge', 'update_surcharge');
+add_action('wp_ajax_nopriv_update_surcharge', 'update_surcharge');
+
+function update_surcharge() {
+    if (!WC()->cart) {
+        wp_send_json_error(['message' => 'Warenkorb nicht geladen']);
         return;
     }
 
-    $order_id = intval($_POST['order_id']);
-    $customer_type = sanitize_text_field($_POST['customer_type']);
+    $cart = WC()->cart;
+    $customer_type = isset($_POST['customer_type']) ? sanitize_text_field($_POST['customer_type']) : 'verein_ssb';
+    $surcharge_name = 'Kundenart-Zuschlag';
 
-    // Kundenart in unserer eigenen Datenbank aktualisieren
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'custom_order_data';
-    $wpdb->update(
-        $table_name,
-        ['customer_type' => $customer_type],
-        ['order_id' => $order_id],
-        ['%s'],
-        ['%d']
-    );
+    error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: AJAX-Zuschlagsberechnung gestartet für Kundenart: " . $customer_type);
 
-    // Bestellung abrufen
-    $order = wc_get_order($order_id);
-
-    // Zuschlagstabelle
-    $surcharge_percentage = [
-        'verein_ssb'     => 0.00,
-        'verein_non_ssb' => 0.05,
-        'privatperson'   => 0.10,
-        'kommerziell'    => 0.15,
-    ];
-
-    // Neuen Zuschlag berechnen
-    $new_surcharge_rate = isset($surcharge_percentage[$customer_type]) ? $surcharge_percentage[$customer_type] : 0;
-    $order_total = floatval($order->get_subtotal());
-    $surcharge_amount = floatval($order_total * $new_surcharge_rate);
-
-    // Bisherige Gebühren entfernen
-    foreach ($order->get_items('fee') as $fee_id => $fee) {
-        $order->remove_item($fee_id);
+    // Vorhandene Zuschläge entfernen
+    $existing_surcharge = false;
+    foreach ($cart->get_fees() as $fee_key => $fee) {
+        if ($fee->name === $surcharge_name) {
+            error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Entferne alten Zuschlag (Key: $fee_key).");
+            unset(WC()->cart->fees_api()->fees[$fee_key]);
+            $existing_surcharge = true;
+        }
     }
 
-    // Neuen Zuschlag hinzufügen
-    if ($surcharge_amount > 0) {
-        $fee = new WC_Order_Item_Fee();
-        $fee->set_name('Kundenart-Zuschlag');
-        $fee->set_amount($surcharge_amount);
-        $fee->set_tax_class(''); // Steuerklasse bleibt unverändert
-        $fee->set_total($surcharge_amount);
-        $order->add_item($fee);
-    }
-
-    // Bestellung speichern & Summen neu berechnen
-    $order->calculate_totals();
-    $order->save();
-
-    wp_send_json_success(['message' => 'Kundenart erfolgreich aktualisiert.']);
-});
-add_action('wp_ajax_update_customer_type', 'update_customer_type_callback');
-add_action('wp_ajax_nopriv_update_customer_type', 'update_customer_type_callback');
-
-function update_customer_type_callback() {
-    global $wpdb;
-
-    if (!isset($_POST['order_id']) || !isset($_POST['customer_type'])) {
-        wp_send_json_error('Fehlende Daten.');
-        return;
-    }
-
-    $order_id = intval($_POST['order_id']);
-    $customer_type = sanitize_text_field($_POST['customer_type']);
-
-    // Kundenart aktualisieren
-    $wpdb->replace(
-        "{$wpdb->prefix}custom_order_data",
-        ['order_id' => $order_id, 'customer_type' => $customer_type],
-        ['%d', '%s']
-    );
-
-    // Zuschläge neu berechnen
-    $order = wc_get_order($order_id);
+    // Bestimmen des Zuschlags
     $surcharge_percentage = 0;
-
     switch ($customer_type) {
         case 'verein_non_ssb':
             $surcharge_percentage = 0.05;
@@ -93,23 +46,26 @@ function update_customer_type_callback() {
             break;
     }
 
-    foreach ($order->get_items('fee') as $fee_id => $fee) {
-        $order->remove_item($fee_id);
+    // Zuschlag nur hinzufügen, wenn nicht bereits aktiv
+    if ($surcharge_percentage > 0) {
+        $surcharge_amount = $cart->cart_contents_total * $surcharge_percentage;
+
+        foreach ($cart->get_fees() as $fee) {
+            if ($fee->name === $surcharge_name) {
+                error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Zuschlag existiert bereits, wird nicht erneut hinzugefügt.");
+                wp_send_json_success(['message' => 'Zuschlag existiert bereits']);
+                return;
+            }
+        }
+
+        // Zuschlag hinzufügen
+        error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Neuer Zuschlag hinzugefügt: " . $surcharge_amount . " EUR");
+        $cart->add_fee($surcharge_name, $surcharge_amount, true);
     }
 
-    $order_total = floatval($order->get_subtotal());
-    $surcharge_amount = floatval($order_total * $surcharge_percentage);
+    // Debugging: Alle aktuellen Gebühren loggen
+    error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Aktuelle Gebühren nach AJAX-Berechnung: " . print_r($cart->get_fees(), true));
 
-    if ($surcharge_amount > 0) {
-        $fee = new WC_Order_Item_Fee();
-        $fee->set_name('Kundenart-Zuschlag');
-        $fee->set_amount($surcharge_amount);
-        $fee->set_total($surcharge_amount);
-        $order->add_item($fee);
-    }
-
-    $order->calculate_totals();
-    $order->save();
-
-    wp_send_json_success('Kundenart und Zuschlag aktualisiert.');
+    // Erfolgreiche Rückmeldung
+    wp_send_json_success(['message' => 'Zuschlag aktualisiert']);
 }
