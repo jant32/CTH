@@ -33,8 +33,8 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
     <style>
         /* Stellt sicher, dass das Dropdown genau die gleiche Breite wie das Kundenfeld hat */
         #customer_type {
-            width: 100%;
-            max-width: 400px; /* Passe diesen Wert an, wenn die anderen Felder breiter sind */
+            width: 100% !important;
+            max-width: 100% !important;
             box-sizing: border-box;
         }
         .order_data_column .form-field label {

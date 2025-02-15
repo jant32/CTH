@@ -27,6 +27,11 @@ add_action('admin_enqueue_scripts', function() {
     wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
 });
 
+// Admin CSS laden
+add_action('admin_enqueue_scripts', function() {
+    wp_enqueue_style('cth-admin-css', plugin_dir_url(__FILE__) . 'assets/css/admin.css');
+});
+
 // Plugin-Pfade definieren
 define('CTH_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CTH_PLUGIN_URL', plugin_dir_url(__FILE__));
