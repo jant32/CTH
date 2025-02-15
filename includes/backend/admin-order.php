@@ -22,8 +22,8 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
     ?>
     <p class="form-field form-field-wide">
         <label for="customer_type"><?php esc_html_e('Kundenart:', 'woocommerce'); ?></label>
-        <select name="customer_type" id="customer_type" class="wc-enhanced-select" style="width: 100%;">
-            <?php foreach (get_all_customer_types() as $key => $label) : ?>
+        <select name="customer_type" id="customer_type" class="wc-enhanced-select" style="width: 100%;" onchange="updateCustomerTypeAJAX(<?php echo $order_id; ?>)">
+            <?php foreach ($customer_types as $key => $label) : ?>
                 <option value="<?php echo esc_attr($key); ?>" <?php selected($customer_type, $key); ?>><?php echo esc_html($label); ?></option>
             <?php endforeach; ?>
         </select>
@@ -52,10 +52,11 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
                     action: 'update_order_customer_type',
                     order_id: orderId,
                     customer_type: customerType
+                    // Optional: nonce: 'hier_wenn_gewünscht'
                 },
                 success: function(response) {
                     if(response.success){
-                        // Aktualisiere die Seite, damit die neuen Werte angezeigt werden
+                        // Seite aktualisieren, damit die neuen Werte (u.a. Totals) angezeigt werden
                         location.reload();
                     } else {
                         alert('Fehler beim Aktualisieren der Kundenart.');
@@ -68,23 +69,4 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
         }
     </script>
     <?php
-});
-
-// Kundenart speichern, wenn Bestellung aktualisiert wird (falls auch beim manuellen Speichern nötig)
-add_action('woocommerce_process_shop_order_meta', function($order_id) {
-    if (!empty($_POST['customer_type'])) {
-        global $wpdb;
-        $customer_type = sanitize_text_field($_POST['customer_type']);
-
-        $wpdb->replace(
-            "{$wpdb->prefix}custom_order_data",
-            [
-                'order_id' => $order_id,
-                'customer_type' => $customer_type
-            ],
-            ['%d', '%s']
-        );
-
-        error_log("DEBUG: Kundenart für Bestellung $order_id auf $customer_type gesetzt.");
-    }
 });
