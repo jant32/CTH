@@ -6,10 +6,12 @@ if (!defined('ABSPATH')) {
 // Debugging: surcharge-handler.php geladen
 error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: surcharge-handler.php geladen");
 
-// AJAX-Hook für die manuelle Aktualisierung des Zuschlags aus dem Admin-Backend
+// AJAX-Handler für Zuschlagsberechnung im Backend
 add_action('wp_ajax_admin_update_surcharge', 'admin_update_surcharge');
 
 function admin_update_surcharge() {
+    check_ajax_referer('admin_surcharge_nonce', 'nonce');
+
     if (!isset($_POST['order_id']) || !isset($_POST['customer_type'])) {
         error_log("[" . date("Y-m-d H:i:s") . "] ERROR: Fehlende Parameter für admin_update_surcharge");
         wp_send_json_error(['message' => 'Fehlende Parameter']);
@@ -29,7 +31,7 @@ function admin_update_surcharge() {
     $surcharge_name = 'Kundenart-Zuschlag';
 
     // Vorhandene Zuschläge entfernen
-    foreach ($order->get_fees() as $fee_id => $fee) {
+    foreach ($order->get_items('fee') as $fee_id => $fee) {
         if ($fee->get_name() === $surcharge_name) {
             error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Entferne alten Zuschlag in Bestellung (ID: $order_id)");
             $order->remove_item($fee_id);
@@ -56,8 +58,9 @@ function admin_update_surcharge() {
         $fee->set_name($surcharge_name);
         $fee->set_amount($surcharge_amount);
         $fee->set_total($surcharge_amount);
+        $fee->set_order_id($order_id);
         $order->add_item($fee);
-        
+
         error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Neuer Zuschlag in Bestellung hinzugefügt: " . $surcharge_amount . " EUR");
     }
 
@@ -69,7 +72,7 @@ function admin_update_surcharge() {
 
 // Enqueue das Script für das Admin-Backend
 add_action('admin_enqueue_scripts', function($hook) {
-    if ($hook === 'edit.php' || $hook === 'post.php') {
+    if ($hook === 'post.php' || $hook === 'edit.php') {
         wp_enqueue_script('admin-surcharge-handler', plugin_dir_url(__FILE__) . 'admin-surcharge.js', ['jquery'], null, true);
         wp_localize_script('admin-surcharge-handler', 'adminSurcharge', [
             'ajaxurl' => admin_url('admin-ajax.php'),
