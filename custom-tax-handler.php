@@ -3,41 +3,35 @@
  * Plugin Name: Custom Tax Handler by PixelTeich
  * Plugin URI: https://pixelteich.de
  * Description: Passt die Mehrwertsteuer und Zuschläge basierend auf der Kundenart an.
- * Version: 3.0.0
+ * Version: 3.1.0
  * Author: Jan Teichmann
  * Author URI: https://pixelteich.de
  */
 
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
     exit; // Sicherheit: Direktes Aufrufen der Datei verhindern
 }
 
-//JS aufrufen
-add_action('admin_enqueue_scripts', 'cth_enqueue_admin_scripts');
-function cth_enqueue_admin_scripts($hook) {
-    if ('post.php' != $hook && 'post-new.php' != $hook) {
-        return;
-    }
-    wp_enqueue_script('cth-admin-js', CTH_PLUGIN_URL.'assets/js/admin.js', array('jquery'), '3.0.0', true );
-}
-
-// Admin JS und AJAX einbinden
-add_action('admin_enqueue_scripts', function() {
-    wp_enqueue_script('cth-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', ['jquery'], null, true);
-    wp_enqueue_script('cth-admin-surcharge-js', plugin_dir_url(__FILE__) . 'assets/js/admin-surcharge.js', ['jquery'], null, true);
-    wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
-});
-
-// Admin CSS laden
-add_action('admin_enqueue_scripts', function() {
-    wp_enqueue_style('cth-admin-css', plugin_dir_url(__FILE__) . 'assets/css/admin.css');
-});
-
-// Plugin-Pfade definieren
+// Plugin-Pfade definieren – dies sollte vor dem Enqueueing von Skripten erfolgen!
 define('CTH_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CTH_PLUGIN_URL', plugin_dir_url(__FILE__));
 
-// Modul-Dateien einbinden
+/** Enqueue Scripts & Styles im Admin-Bereich **/
+
+add_action('admin_enqueue_scripts', function($hook) {
+    // Wir laden die Skripte nur auf den Seiten, wo sie gebraucht werden
+    if ( 'post.php' === $hook || 'post-new.php' === $hook ) {
+        // Haupt-JS (admin.js) laden
+        wp_enqueue_script('cth-admin-js', CTH_PLUGIN_URL . 'assets/js/admin.js', ['jquery'], '3.0.0', true );
+        // Lokalisiere das Script für AJAX-Zugriffe
+        wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
+    }
+    
+    // Admin CSS laden – wir laden es auf allen Admin-Seiten
+    wp_enqueue_style('cth-admin-css', CTH_PLUGIN_URL . 'assets/css/admin.css');
+});
+
+/** Modul-Dateien einbinden **/
 require_once CTH_PLUGIN_DIR . 'includes/backend/admin-menu.php';
 require_once CTH_PLUGIN_DIR . 'includes/helpers/session-handler.php';
 require_once CTH_PLUGIN_DIR . 'includes/checkout/checkout-handler.php';
