@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Zuschläge berechnen und doppelte Berechnungen verhindern
+// Zuschlag korrekt berechnen und doppelte Berechnungen verhindern
 add_action('woocommerce_cart_calculate_fees', function() {
     $customer_type = WC()->session->get('customer_type', 'verein_ssb');
     $cart = WC()->cart;
@@ -22,27 +22,25 @@ add_action('woocommerce_cart_calculate_fees', function() {
             break;
     }
 
-    // Überprüfung, ob der Zuschlag bereits existiert
-    $existing_surcharge = false;
-    foreach ($cart->get_fees() as $fee) {
+    // 1️⃣ Sicherstellen, dass KEIN doppelter Zuschlag existiert – alle entfernen
+    foreach ($cart->get_fees() as $fee_key => $fee) {
         if ($fee->name === $surcharge_name) {
-            $existing_surcharge = true;
-            break;
+            $cart->remove_fee($fee_key);
         }
     }
 
-    // Falls der Zuschlag bereits existiert, entfernen
-    if ($existing_surcharge) {
-        foreach ($cart->get_fees() as $fee_key => $fee) {
-            if ($fee->name === $surcharge_name) {
-                $cart->remove_fee($fee_key);
-            }
-        }
-    }
-
-    // Neuen Zuschlag berechnen und hinzufügen
-    if ($surcharge_percentage > 0) {
+    // 2️⃣ Neuberechnung & hinzufügen des neuen Zuschlags (aber nur EINMAL pro Berechnung)
+    if ($surcharge_percentage > 0 && !WC()->session->get('surcharge_applied')) {
         $surcharge_amount = $cart->cart_contents_total * $surcharge_percentage;
         $cart->add_fee($surcharge_name, $surcharge_amount, true);
+
+        // Session-Variable setzen, um Mehrfachberechnung zu verhindern
+        WC()->session->set('surcharge_applied', true);
     }
-}, 20, 1);
+
+    // 3️⃣ Session-Variable nach Abschluss des Bestellprozesses zurücksetzen
+    add_action('woocommerce_cart_updated', function() {
+        WC()->session->set('surcharge_applied', false);
+    });
+
+}, 10);
