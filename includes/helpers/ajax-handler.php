@@ -15,6 +15,11 @@ add_action('wp_ajax_update_surcharge', 'update_surcharge');
 add_action('wp_ajax_nopriv_update_surcharge', 'update_surcharge');
 
 function update_surcharge() {
+    // Alle aktiven Output-Puffer leeren, um unerwünschte Ausgaben zu verhindern
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    
     if (!WC()->cart) {
         error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Warenkorb nicht geladen.");
         wp_send_json_error(['message' => 'Warenkorb nicht geladen']);
@@ -68,6 +73,11 @@ function update_surcharge() {
     // Debugging: Alle aktuellen Gebühren loggen
     error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Aktuelle Gebühren nach AJAX-Berechnung: " . print_r($cart->get_fees(), true));
 
+    // Vor der Rückgabe nochmals sicherstellen, dass keine Ausgabe im Buffer ist
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    
     // Erfolgreiche Rückmeldung
     wp_send_json_success(['message' => 'Zuschlag aktualisiert']);
 }
