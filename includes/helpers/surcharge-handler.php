@@ -59,8 +59,8 @@ function update_surcharge_handler() {
  * Hook: Berechnet den Zuschlag im Warenkorb
  * basierend auf dem in der Session gespeicherten Kundenart-Wert.
  */
-add_action( 'woocommerce_cart_calculate_fees', 'apply_surcharge_to_cart' );
-function apply_surcharge_to_cart() {
+add_action( 'woocommerce_cart_calculate_fees', 'apply_surcharge_to_cart_handler' );
+function apply_surcharge_to_cart_handler() {
     if ( ! WC()->cart ) {
         return;
     }
