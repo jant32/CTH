@@ -6,15 +6,29 @@ if (!defined('ABSPATH')) {
 // Debugging-Log aktivieren
 error_log("DEBUG: surcharge-handler.php geladen");
 
-// Zuschlag korrekt berechnen und doppelte Berechnungen verhindern
-add_action('woocommerce_cart_calculate_fees', function() {
+// Verhindern, dass die Funktion mehrfach registriert wird
+if (!has_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge')) {
+    add_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge', 10);
+}
+
+// Funktion zur Zuschlagsberechnung
+function apply_customer_type_surcharge() {
     $customer_type = WC()->session->get('customer_type', 'verein_ssb');
     $cart = WC()->cart;
-    $surcharge_percentage = 0;
     $surcharge_name = 'Kundenart-Zuschlag';
+    $surcharge_percentage = 0;
 
-    error_log("DEBUG: Berechnung gestartet für Kundenart: " . $customer_type);
+    error_log("DEBUG: Zuschlagsberechnung gestartet für Kundenart: " . $customer_type);
 
+    // 1️⃣ Prüfen, ob die Funktion mehrfach läuft
+    static $called = false;
+    if ($called) {
+        error_log("DEBUG: Zuschlag bereits berechnet, breche ab.");
+        return;
+    }
+    $called = true;
+
+    // 2️⃣ Bestimmen des Zuschlagsatzes
     switch ($customer_type) {
         case 'verein_non_ssb':
             $surcharge_percentage = 0.05;
@@ -27,7 +41,7 @@ add_action('woocommerce_cart_calculate_fees', function() {
             break;
     }
 
-    // 1️⃣ Sicherstellen, dass KEIN doppelter Zuschlag existiert – alle entfernen
+    // 3️⃣ Entfernen alter Zuschläge, um doppelte Berechnungen zu vermeiden
     foreach ($cart->get_fees() as $fee_key => $fee) {
         if ($fee->name === $surcharge_name) {
             error_log("DEBUG: Entferne alten Zuschlag!");
@@ -35,26 +49,16 @@ add_action('woocommerce_cart_calculate_fees', function() {
         }
     }
 
-    // 2️⃣ Prüfen, ob bereits eine Berechnung durchgeführt wurde
-    if (WC()->session->get('surcharge_applied')) {
-        error_log("DEBUG: Zuschlag wurde bereits angewendet – Abbruch!");
-        return;
-    }
-
-    // 3️⃣ Neuberechnung & hinzufügen des neuen Zuschlags
+    // 4️⃣ Neuen Zuschlag hinzufügen
     if ($surcharge_percentage > 0) {
         $surcharge_amount = $cart->cart_contents_total * $surcharge_percentage;
         error_log("DEBUG: Zuschlag hinzugefügt: " . $surcharge_amount . " EUR");
         $cart->add_fee($surcharge_name, $surcharge_amount, true);
-
-        // Session-Variable setzen, um Mehrfachberechnung zu verhindern
-        WC()->session->set('surcharge_applied', true);
     }
 
-    // 4️⃣ Session-Variable nach Abschluss des Bestellprozesses zurücksetzen
+    // 5️⃣ Session-Variable zurücksetzen, wenn der Warenkorb aktualisiert wird
     add_action('woocommerce_cart_updated', function() {
         error_log("DEBUG: Session variable surcharge_applied zurückgesetzt.");
         WC()->session->set('surcharge_applied', false);
     });
-
-}, 10);
+}
