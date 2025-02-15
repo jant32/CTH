@@ -33,32 +33,8 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
         function updateCustomerTypeAJAX(orderId) {
             var customerType = jQuery('#customer_type').val();
             
-            // Versuche, das Container-Element für die Bestellpositionen zu finden.
-            // Zuerst #order_line_items, alternativ der gesamte Admin-Content.
-            var $orderItemsContainer = jQuery('#order_line_items');
-            if (!$orderItemsContainer.length) {
-                $orderItemsContainer = jQuery('#post-body-content');
-            }
-            
-            // Wenn ein Container gefunden wurde, füge ein Overlay mit Spinner ein.
-            if ($orderItemsContainer.length) {
-                // Stelle sicher, dass der Container relativ positioniert ist.
-                if ($orderItemsContainer.css('position') === 'static') {
-                    $orderItemsContainer.css('position', 'relative');
-                }
-                // Füge das Overlay ein, falls noch nicht vorhanden.
-                if (jQuery('#surcharge-loader').length === 0) {
-                    $orderItemsContainer.append(
-                        '<div id="surcharge-loader" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;">' +
-                        '<div class="spinner" style="width:40px; height:40px; border:4px solid #ccc; border-top-color:#333; border-radius:50%; animation:spin 1s linear infinite;"></div>' +
-                        '</div>'
-                    );
-                    // Füge die Keyframes für den Spinner ein (falls nicht bereits vorhanden).
-                    if (jQuery('#surcharge-spinner-css').length === 0) {
-                        jQuery('head').append('<style id="surcharge-spinner-css">@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>');
-                    }
-                }
-            }
+            // Overlay anzeigen
+            showLoadingOverlay();
             
             jQuery.ajax({
                 type: 'POST',
@@ -67,21 +43,19 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
                     action: 'update_order_customer_type',
                     order_id: orderId,
                     customer_type: customerType
-                    // Optional: nonce: 'hier_wenn_gewünscht'
+                    // Optional: nonce: 'dein_nonce'
                 },
                 success: function(response) {
                     // Overlay entfernen
-                    jQuery('#surcharge-loader').remove();
+                    hideLoadingOverlay();
                     if(response.success){
-                        // Seite neu laden, um aktualisierte Totals anzuzeigen.
-                        location.reload();
+                        location.reload(); // oder gezielte Aktualisierung der Totals
                     } else {
                         alert('Fehler beim Aktualisieren der Kundenart.');
                     }
                 },
                 error: function() {
-                    // Overlay entfernen
-                    jQuery('#surcharge-loader').remove();
+                    hideLoadingOverlay();
                     alert('AJAX-Fehler beim Aktualisieren der Kundenart.');
                 }
             });
