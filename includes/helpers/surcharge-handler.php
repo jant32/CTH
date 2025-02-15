@@ -5,23 +5,29 @@ if (!defined('ABSPATH')) {
 
 error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: surcharge-handler.php geladen");
 
-// Prüfen, ob die Funktion mehrfach registriert wird
+// Prüfen, ob der Hook mehrfach registriert wird
 global $wp_filter;
 if (isset($wp_filter['woocommerce_cart_calculate_fees'])) {
     error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Hook 'woocommerce_cart_calculate_fees' ist registriert: " . count($wp_filter['woocommerce_cart_calculate_fees']->callbacks) . " Mal.");
 }
 
-// Doppelte Registrierung verhindern
-if (has_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge')) {
-    remove_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge');
-}
-add_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge', 20); // Priorität 20, um andere Hooks vorher laufen zu lassen
+// Doppeltes Registrieren der Funktion verhindern
+remove_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge');
+add_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge', 20);
 
 // Funktion zum Anwenden des Zuschlags
 function apply_customer_type_surcharge() {
+    static $executed = false; // Schutzmechanismus gegen doppelte Ausführung
+
+    if ($executed) {
+        error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Zuschlagsberechnung übersprungen, weil sie bereits ausgeführt wurde.");
+        return;
+    }
+    $executed = true; // Setzen, damit die Funktion nicht doppelt läuft
+
     if (is_admin() && !defined('DOING_AJAX')) {
         error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Zuschlagsberechnung im Backend übersprungen.");
-        return; // Im Backend keine Berechnung ausführen
+        return;
     }
 
     // Sicherstellen, dass WooCommerce geladen ist
@@ -36,12 +42,20 @@ function apply_customer_type_surcharge() {
 
     error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Zuschlagsberechnung gestartet für Kundenart: " . $customer_type);
 
-    // Vorhandene Zuschläge entfernen, bevor neue hinzugefügt werden
-    foreach ($cart->get_fees() as $fee_key => $fee) {
+    // Vorhandene Zuschläge entfernen
+    $existing_fees = $cart->get_fees();
+    $found_existing = false;
+
+    foreach ($existing_fees as $fee_key => $fee) {
         if ($fee->name === $surcharge_name) {
             error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Entferne alten Zuschlag (Key: $fee_key).");
             unset(WC()->cart->fees_api()->fees[$fee_key]);
+            $found_existing = true;
         }
+    }
+
+    if ($found_existing) {
+        error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Alter Zuschlag entfernt, bevor neuer hinzugefügt wird.");
     }
 
     // Bestimmen des Zuschlags
@@ -65,12 +79,12 @@ function apply_customer_type_surcharge() {
         // Prüfen, ob der Zuschlag nicht bereits existiert
         foreach ($cart->get_fees() as $fee) {
             if ($fee->name === $surcharge_name) {
-                error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Zuschlag existiert bereits, daher nicht erneut hinzugefügt.");
+                error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Zuschlag existiert bereits, wird nicht erneut hinzugefügt.");
                 return;
             }
         }
 
-        // Fehlerprotokollierung: Stacktrace für das Hinzufügen eines Zuschlags
+        // Debugging: Stacktrace für das Hinzufügen eines Zuschlags
         error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Neuer Zuschlag hinzugefügt: " . $surcharge_amount . " EUR");
         error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: Stacktrace für Zuschlag hinzufügen: " . print_r(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5), true));
 
