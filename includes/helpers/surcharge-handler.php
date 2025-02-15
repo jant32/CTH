@@ -3,8 +3,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Debugging aktivieren
 error_log("DEBUG: surcharge-handler.php geladen");
+
+// Prüfen, ob die Funktion mehrfach registriert wird
+global $wp_filter;
+if (isset($wp_filter['woocommerce_cart_calculate_fees'])) {
+    error_log("DEBUG: Hook 'woocommerce_cart_calculate_fees' ist registriert: " . count($wp_filter['woocommerce_cart_calculate_fees']->callbacks) . " Mal.");
+}
+
+add_action('woocommerce_cart_calculate_fees', function() {
+    error_log("DEBUG: Hook 'woocommerce_cart_calculate_fees' ausgeführt von: " . print_r(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5), true));
+}, 999);
 
 // Funktion zum Anwenden des Zuschlags
 function apply_customer_type_surcharge() {
@@ -58,3 +67,8 @@ function apply_customer_type_surcharge() {
 
 // Hook korrekt registrieren, falls noch nicht geschehen
 add_action('woocommerce_cart_calculate_fees', 'apply_customer_type_surcharge', 1);
+
+add_action('woocommerce_cart_calculate_fees', function() {
+    global $woocommerce;
+    error_log("DEBUG: Aktuelle Gebühren im Warenkorb: " . print_r(WC()->cart->get_fees(), true));
+}, 10);
