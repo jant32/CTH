@@ -18,26 +18,28 @@ function updateCustomerTypeAJAX(orderId) {
         }
     });
 }
-jQuery(document).ready(function($) {
-    $('#customer_type').change(function() {
-        var order_id = woocommerce_admin_meta_boxes.post_id;
-        var customer_type = $(this).val();
+jQuery(document).ready(function ($) {
+    $('#customer_type_dropdown').change(function () {
+        var customerType = $(this).val();
+        var orderId = $('#post_ID').val(); // WooCommerce Bestell-ID abrufen
 
         $.ajax({
-            type: 'POST',
-            url: cth_ajax.ajax_url,
+            type: "POST",
+            url: adminSurcharge.ajaxurl,
             data: {
-                action: 'update_customer_type',
-                order_id: order_id,
-                customer_type: customer_type
+                action: "admin_update_surcharge",
+                order_id: orderId,
+                customer_type: customerType,
+                _ajax_nonce: adminSurcharge.nonce,
             },
-            success: function(response) {
+            success: function (response) {
                 if (response.success) {
+                    alert("Zuschlag erfolgreich aktualisiert!");
                     location.reload();
                 } else {
-                    alert('Fehler: ' + response.data);
+                    alert("Fehler: " + response.data.message);
                 }
-            }
+            },
         });
     });
 });
