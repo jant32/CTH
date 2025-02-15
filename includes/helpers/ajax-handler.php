@@ -3,6 +3,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (ob_get_length()) {
+    ob_clean();
+}
+
 // Debugging: AJAX-Handler wird aufgerufen
 error_log("[" . date("Y-m-d H:i:s") . "] DEBUG: ajax-handler.php geladen");
 
