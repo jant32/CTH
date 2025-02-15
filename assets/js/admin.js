@@ -18,3 +18,26 @@ function updateCustomerTypeAJAX(orderId) {
         }
     });
 }
+jQuery(document).ready(function($) {
+    $('#customer_type').change(function() {
+        var order_id = woocommerce_admin_meta_boxes.post_id;
+        var customer_type = $(this).val();
+
+        $.ajax({
+            type: 'POST',
+            url: cth_ajax.ajax_url,
+            data: {
+                action: 'update_customer_type',
+                order_id: order_id,
+                customer_type: customer_type
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('Fehler: ' + response.data);
+                }
+            }
+        });
+    });
+});

@@ -21,6 +21,12 @@ function cth_enqueue_admin_scripts($hook) {
     wp_enqueue_script('cth-admin-js', CTH_PLUGIN_URL.'assets/js/admin.js', array('jquery'), '3.0.0', true );
 }
 
+// Admin JS und AJAX einbinden
+add_action('admin_enqueue_scripts', function() {
+    wp_enqueue_script('cth-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', ['jquery'], null, true);
+    wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
+});
+
 // Plugin-Pfade definieren
 define('CTH_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('CTH_PLUGIN_URL', plugin_dir_url(__FILE__));

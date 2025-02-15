@@ -56,3 +56,60 @@ add_action('wp_ajax_update_order_customer_type', function() {
 
     wp_send_json_success(['message' => 'Kundenart erfolgreich aktualisiert.']);
 });
+add_action('wp_ajax_update_customer_type', 'update_customer_type_callback');
+add_action('wp_ajax_nopriv_update_customer_type', 'update_customer_type_callback');
+
+function update_customer_type_callback() {
+    global $wpdb;
+
+    if (!isset($_POST['order_id']) || !isset($_POST['customer_type'])) {
+        wp_send_json_error('Fehlende Daten.');
+        return;
+    }
+
+    $order_id = intval($_POST['order_id']);
+    $customer_type = sanitize_text_field($_POST['customer_type']);
+
+    // Kundenart aktualisieren
+    $wpdb->replace(
+        "{$wpdb->prefix}custom_order_data",
+        ['order_id' => $order_id, 'customer_type' => $customer_type],
+        ['%d', '%s']
+    );
+
+    // Zuschläge neu berechnen
+    $order = wc_get_order($order_id);
+    $surcharge_percentage = 0;
+
+    switch ($customer_type) {
+        case 'verein_non_ssb':
+            $surcharge_percentage = 0.05;
+            break;
+        case 'privatperson':
+            $surcharge_percentage = 0.10;
+            break;
+        case 'kommerziell':
+            $surcharge_percentage = 0.15;
+            break;
+    }
+
+    foreach ($order->get_items('fee') as $fee_id => $fee) {
+        $order->remove_item($fee_id);
+    }
+
+    $order_total = floatval($order->get_subtotal());
+    $surcharge_amount = floatval($order_total * $surcharge_percentage);
+
+    if ($surcharge_amount > 0) {
+        $fee = new WC_Order_Item_Fee();
+        $fee->set_name('Kundenart-Zuschlag');
+        $fee->set_amount($surcharge_amount);
+        $fee->set_total($surcharge_amount);
+        $order->add_item($fee);
+    }
+
+    $order->calculate_totals();
+    $order->save();
+
+    wp_send_json_success('Kundenart und Zuschlag aktualisiert.');
+}
