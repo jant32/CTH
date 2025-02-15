@@ -73,7 +73,7 @@ function admin_update_surcharge() {
 // Enqueue das Script für das Admin-Backend
 add_action('admin_enqueue_scripts', function($hook) {
     if ($hook === 'post.php' || $hook === 'edit.php') {
-        wp_enqueue_script('admin-surcharge-handler', plugin_dir_url(__FILE__) . 'admin-surcharge.js', ['jquery'], null, true);
+        wp_enqueue_script('admin-surcharge-handler', plugin_dir_url(__DIR__) . 'assets/js/admin-surcharge.js', ['jquery'], null, true);
         wp_localize_script('admin-surcharge-handler', 'adminSurcharge', [
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('admin_surcharge_nonce'),
