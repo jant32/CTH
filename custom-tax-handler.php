@@ -24,6 +24,7 @@ function cth_enqueue_admin_scripts($hook) {
 // Admin JS und AJAX einbinden
 add_action('admin_enqueue_scripts', function() {
     wp_enqueue_script('cth-admin-js', plugin_dir_url(__FILE__) . 'assets/js/admin.js', ['jquery'], null, true);
+    wp_enqueue_script('cth-admin-surcharge-js', plugin_dir_url(__FILE__) . 'assets/js/admin-surcharge.js', ['jquery'], null, true);
     wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
 });
 
