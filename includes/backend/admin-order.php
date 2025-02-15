@@ -29,46 +29,36 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
         </select>
     </p>
 
-    <!-- CSS für Lade-Indikator (kann alternativ in eine separate CSS-Datei ausgelagert werden) -->
-    <style>
-        /* Lade-Indikator: Dimmt den Container und zeigt einen Spinner */
-        .woocommerce_order_items.loading, #order_line_items.loading {
-            opacity: 0.5;
-            position: relative;
-        }
-        .woocommerce_order_items.loading:after, #order_line_items.loading:after {
-            content: "";
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 40px;
-            height: 40px;
-            margin: -20px 0 0 -20px;
-            border: 4px solid #ccc;
-            border-top-color: #333;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            z-index: 1000;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-
     <script type="text/javascript">
         function updateCustomerTypeAJAX(orderId) {
             var customerType = jQuery('#customer_type').val();
             
-            // Container, in dem die Bestellpositionen (Artikel) dargestellt werden.
-            // Passen Sie ggf. den Selektor an, falls Ihre Seite einen anderen Container verwendet.
+            // Versuche, das Container-Element für die Bestellpositionen zu finden.
+            // Zuerst #order_line_items, alternativ der gesamte Admin-Content.
             var $orderItemsContainer = jQuery('#order_line_items');
             if (!$orderItemsContainer.length) {
-                $orderItemsContainer = jQuery('.woocommerce_order_items');
+                $orderItemsContainer = jQuery('#post-body-content');
             }
             
-            // Lade-Indikator: Container dimmen & Spinner anzeigen
-            $orderItemsContainer.addClass('loading');
+            // Wenn ein Container gefunden wurde, füge ein Overlay mit Spinner ein.
+            if ($orderItemsContainer.length) {
+                // Stelle sicher, dass der Container relativ positioniert ist.
+                if ($orderItemsContainer.css('position') === 'static') {
+                    $orderItemsContainer.css('position', 'relative');
+                }
+                // Füge das Overlay ein, falls noch nicht vorhanden.
+                if (jQuery('#surcharge-loader').length === 0) {
+                    $orderItemsContainer.append(
+                        '<div id="surcharge-loader" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;">' +
+                        '<div class="spinner" style="width:40px; height:40px; border:4px solid #ccc; border-top-color:#333; border-radius:50%; animation:spin 1s linear infinite;"></div>' +
+                        '</div>'
+                    );
+                    // Füge die Keyframes für den Spinner ein (falls nicht bereits vorhanden).
+                    if (jQuery('#surcharge-spinner-css').length === 0) {
+                        jQuery('head').append('<style id="surcharge-spinner-css">@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>');
+                    }
+                }
+            }
             
             jQuery.ajax({
                 type: 'POST',
@@ -80,17 +70,18 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
                     // Optional: nonce: 'hier_wenn_gewünscht'
                 },
                 success: function(response) {
-                    // Lade-Indikator entfernen
-                    $orderItemsContainer.removeClass('loading');
+                    // Overlay entfernen
+                    jQuery('#surcharge-loader').remove();
                     if(response.success){
-                        // Seite aktualisieren, damit neue Werte (u.a. Totals) angezeigt werden
+                        // Seite neu laden, um aktualisierte Totals anzuzeigen.
                         location.reload();
                     } else {
                         alert('Fehler beim Aktualisieren der Kundenart.');
                     }
                 },
                 error: function() {
-                    $orderItemsContainer.removeClass('loading');
+                    // Overlay entfernen
+                    jQuery('#surcharge-loader').remove();
                     alert('AJAX-Fehler beim Aktualisieren der Kundenart.');
                 }
             });
