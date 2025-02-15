@@ -16,14 +16,14 @@ if ( ob_get_length() ) {
 error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: ajax-handler.php geladen" );
 
 // AJAX-Hooks für die Aktualisierung des Zuschlags
-add_action( 'wp_ajax_update_surcharge', 'update_surcharge' );
-add_action( 'wp_ajax_nopriv_update_surcharge', 'update_surcharge' );
+add_action( 'wp_ajax_update_surcharge', 'update_surcharge_handler' );
+add_action( 'wp_ajax_nopriv_update_surcharge', 'update_surcharge_handler' );
 
 /**
  * AJAX-Handler: Aktualisiert den Kundenart-Wert (z. B. in der Session)
  * und gibt eine JSON-Antwort zurück.
  */
-function update_surcharge() {
+function update_surcharge_handler() {
     // Alle aktiven Output-Puffer leeren
     while ( ob_get_level() > 0 ) {
         ob_end_clean();
