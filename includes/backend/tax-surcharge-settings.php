@@ -1,4 +1,6 @@
 <?php
+ob_start(); // Output Buffering starten, um frühzeitige Ausgaben zu unterdrücken
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
