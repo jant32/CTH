@@ -20,48 +20,48 @@ add_action('woocommerce_admin_order_data_after_order_details', function($order) 
     }
     $customer_types = get_all_customer_types();
     ?>
-    <p class="form-field form-field-wide">
+   <p class="form-field form-field-wide">
     <label for="customer_type"><?php esc_html_e('Kundenart:', 'woocommerce'); ?></label>
     <select name="customer_type" id="customer_type" class="wc-enhanced-select" style="width: 100%;" onchange="updateCustomerTypeAJAX(<?php echo $order_id; ?>)">
-        <?php foreach (get_all_customer_types() as $key => $label) : ?>
-            <option value="<?php echo esc_attr($key); ?>" <?php selected($customer_type, $key); ?>>
-                <?php echo esc_html($label); ?>
+        <?php foreach ( get_all_customer_types() as $key => $label ) : ?>
+            <option value="<?php echo esc_attr( $key ); ?>" <?php selected( $customer_type, $key ); ?>>
+                <?php echo esc_html( $label ); ?>
             </option>
         <?php endforeach; ?>
     </select>
 </p>
-
-    <script type="text/javascript">
-        function updateCustomerTypeAJAX(orderId) {
-            var customerType = jQuery('#customer_type').val();
-            
-            // Overlay anzeigen
-            showLoadingOverlay();
-            
-            jQuery.ajax({
-                type: 'POST',
-                url: ajaxurl,
-                data: {
-                    action: 'update_order_customer_type',
-                    order_id: orderId,
-                    customer_type: customerType
-                    // Optional: nonce: 'dein_nonce'
-                },
-                success: function(response) {
-                    // Overlay entfernen
-                    hideLoadingOverlay();
-                    if(response.success){
-                        location.reload(); // oder gezielte Aktualisierung der Totals
-                    } else {
-                        alert('Fehler beim Aktualisieren der Kundenart.');
-                    }
-                },
-                error: function() {
-                    hideLoadingOverlay();
-                    alert('AJAX-Fehler beim Aktualisieren der Kundenart.');
-                }
-            });
-        }
-    </script>
     <?php
 });
+<script type="text/javascript">
+/**
+ * Diese Funktion wird vom inline onchange-Attribut aufgerufen.
+ * Sie sendet per AJAX den neuen Kundenart-Wert (und im Admin ggf. die Order-ID)
+ * an unseren AJAX-Handler (Action "update_surcharge").
+ */
+function updateCustomerTypeAJAX(orderId) {
+    // Hole den aktuellen Wert aus dem Dropdown
+    var customerType = document.getElementById('customer_type').value;
+    
+    // Starte den AJAX-Call (ajaxurl ist im Admin-Bereich global verfügbar)
+    jQuery.ajax({
+        type: 'POST',
+        url: ajaxurl,
+        data: {
+            action: 'update_surcharge',
+            order_id: orderId,
+            customer_type: customerType
+        },
+        success: function(response) {
+            if ( response.success ) {
+                // Bei Erfolg Seite neu laden, um die Änderungen zu übernehmen
+                location.reload();
+            } else {
+                alert('Fehler: ' + (response.data && response.data.message ? response.data.message : 'Unbekannter Fehler'));
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('AJAX-Fehler: ' + error);
+        }
+    });
+}
+</script>
