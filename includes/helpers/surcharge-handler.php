@@ -61,4 +61,70 @@ function apply_customer_surcharge_to_cart( $cart ) {
     apply_customer_surcharge( $cart, $customer_type );
     error_log( "[" . date("Y-m-d H:i:s") . "] DEBUG: Endgültige Gebühren im Warenkorb: " . print_r( $cart->get_fees(), true ) );
 }
+
+add_action('woocommerce_admin_order_data_after_order_details', 'cth_inline_customer_type_script');
+function cth_inline_customer_type_script($order) {
+    // Gib das Dropdown aus (falls noch nicht vorhanden) oder gehe davon aus, dass es bereits im Markup ist.
+    // Hier gehen wir davon aus, dass das Dropdown bereits über euer bestehendes Markup ausgegeben wird.
+    ?>
+    <script type="text/javascript">
+    jQuery(document).ready(function($) {
+        // Falls das inline onchange-Attribut vorhanden ist, entfernen wir es, damit unser Binding greift:
+        $('#customer_type').removeAttr('onchange');
+        
+        // Binde das Change-Event direkt an das Dropdown (das von WooCommerce als "wc-enhanced-select" initialisiert wird)
+        $('#customer_type').on('change', function() {
+            var customerType = $(this).val();
+            var orderId = $('#post_ID').val(); // Im Admin-Bereich die Bestell-ID
+            $.ajax({
+                type: 'POST',
+                url: ajaxurl,  // ajaxurl ist im Admin global verfügbar
+                data: {
+                    action: 'update_surcharge',
+                    order_id: orderId,
+                    customer_type: customerType
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Zum Beispiel: Seite neu laden, um die aktualisierten Daten anzuzeigen
+                        location.reload();
+                    } else {
+                        alert('Fehler: ' + (response.data && response.data.message ? response.data.message : 'Unbekannter Fehler'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('AJAX-Fehler: ' + error);
+                }
+            });
+        });
+        
+        // Falls Select2 aktiv ist (wie bei wc-enhanced-select), binde auch den select2:select-Event:
+        $('#customer_type').on('select2:select', function(e) {
+            var customerType = $(this).val();
+            var orderId = $('#post_ID').val();
+            $.ajax({
+                type: 'POST',
+                url: ajaxurl,
+                data: {
+                    action: 'update_surcharge',
+                    order_id: orderId,
+                    customer_type: customerType
+                },
+                success: function(response) {
+                    if (response.success) {
+                        location.reload();
+                    } else {
+                        alert('Fehler: ' + (response.data && response.data.message ? response.data.message : 'Unbekannter Fehler'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('AJAX-Fehler: ' + error);
+                }
+            });
+        });
+    });
+    </script>
+    <?php
+}
+
 add_action( 'woocommerce_cart_calculate_fees', 'apply_customer_surcharge_to_cart', 20 );
