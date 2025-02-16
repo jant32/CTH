@@ -16,7 +16,11 @@ add_action( 'woocommerce_process_shop_order_meta', 'cth_update_order_customer_ty
 function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
     if ( isset( $_POST['customer_type'] ) ) {
         $customer_type = sanitize_text_field( $_POST['customer_type'] );
+        // Wenn keine Steuerklasse übergeben wird, nehmen wir den Standard
         $tax_class = isset( $_POST['tax_class'] ) ? sanitize_text_field( $_POST['tax_class'] ) : 'standard';
+        
+        // In WooCommerce wird für die Standardsteuerklasse ein leerer String verwendet
+        $woo_tax_class = ( 'standard' === $tax_class ) ? '' : $tax_class;
         
         // Aktualisiere den Wert in der Custom-Tabelle
         global $wpdb;
@@ -26,7 +30,7 @@ function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
             [
                 'order_id'      => $order_id,
                 'customer_type' => $customer_type,
-                'tax_class'     => $tax_class,
+                'tax_class'     => $tax_class, // Hier speichern wir den ursprünglichen Wert (z. B. "standard")
             ],
             [
                 '%d',
@@ -72,7 +76,7 @@ function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
         }
         
         if ( $surcharge_percentage > 0 ) {
-            // Hier verwenden wir das Subtotal der Bestellung (ohne Steuern, Rabatte etc.)
+            // Verwende das Subtotal der Bestellung (ohne Steuern, Rabatte etc.)
             $order_subtotal = $order->get_subtotal();
             $surcharge_amount = $order_subtotal * $surcharge_percentage;
             if ( $surcharge_amount > 0 ) {
@@ -81,7 +85,7 @@ function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
                 $fee->set_total( $surcharge_amount );
                 $fee->set_tax_status( 'taxable' ); // Falls Steuern berechnet werden sollen
                 if ( method_exists( $fee, 'set_tax_class' ) ) {
-                    $fee->set_tax_class( $tax_class );
+                    $fee->set_tax_class( $woo_tax_class );
                 }
                 $order->add_item( $fee );
                 error_log( "DEBUG: Zuschlag für Bestellung $order_id neu hinzugefügt: " . $surcharge_amount . " EUR" );
@@ -91,12 +95,12 @@ function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
         // Aktualisiere die Steuerklasse für alle Bestellpositionen (Produkte und Fees)
         foreach ( $order->get_items() as $item_id => $item ) {
             if ( method_exists( $item, 'set_tax_class' ) ) {
-                $item->set_tax_class( $tax_class );
+                $item->set_tax_class( $woo_tax_class );
                 $item->save();
             }
         }
         
-        // Bestellsumme neu berechnen und Bestellung speichern
+        // Neuberechnung der Bestellsumme erzwingen und Bestellung speichern
         $order->calculate_totals( true );
         $order->save();
         error_log( "DEBUG: Bestellung $order_id neu berechnet und gespeichert." );
