@@ -4,14 +4,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Erzeugt den HTML-Inhalt für die Zuschlagsoptionen als Radio-Buttons.
+ * Baut den HTML-Output für die Zuschlagsoptionen als Radio-Buttons.
  *
- * @return string Der HTML-Output.
+ * Die Optionen werden aus der Datenbanktabelle wp_custom_tax_surcharge_handler geladen.
+ *
+ * @return string HTML-Output
  */
 function cth_get_custom_surcharge_options_html() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
     $options = $wpdb->get_results( "SELECT * FROM $table_name ORDER BY id ASC", ARRAY_A );
+    
+    // Aktuell ausgewählte Option (als ID) aus der Session (Standard: 0)
     $selected_option = WC()->session->get( 'custom_surcharge', 0 );
     
     ob_start();
@@ -20,13 +24,14 @@ function cth_get_custom_surcharge_options_html() {
         echo '<p><strong>' . esc_html__( 'Kundenart', 'custom-tax-handler' ) . ' *</strong></p>';
         echo '<p class="form-row form-row-wide">';
         foreach ( $options as $option ) {
+            // Formatierung des Zuschlagswerts: Bei prozentual multiplizieren wir mit 100, sonst anzeigen wir den Betrag
             if ( $option['surcharge_type'] === 'prozentual' ) {
                 $display_value = number_format( $option['surcharge_value'] * 100, 2, ',', '' ) . '%';
             } else {
                 $display_value = number_format( $option['surcharge_value'], 2, ',', '' ) . ' €';
             }
             echo '<label style="display:block; margin-bottom:5px;">';
-            echo '<input type="radio" name="custom_surcharge" value="' . esc_attr( $option['id'] ) . '" ' . checked( $selected_option, $option['id'], false ) . ' onchange="cth_update_custom_surcharge(this.value);" /> ';
+            echo '<input type="radio" name="custom_surcharge" value="' . esc_attr( $option['id'] ) . '" ' . checked( $selected_option, $option['id'], false ) . ' /> ';
             echo esc_html( $option['surcharge_name'] ) . ' (' . esc_html( $display_value ) . ')';
             echo '</label>';
         }
@@ -45,8 +50,7 @@ function cth_display_custom_surcharge_options_checkout( $checkout ) {
 add_action( 'woocommerce_review_order_before_order_total', 'cth_display_custom_surcharge_options_checkout' );
 
 /**
- * Aktualisiert das Review-Fragment, sodass der Container
- * "cth_custom_surcharge_options" bei Checkout-Updates ersetzt wird.
+ * Sorgt dafür, dass der Container bei Checkout-Updates ersetzt wird.
  */
 function cth_update_order_review_fragments( $fragments ) {
     $html = cth_get_custom_surcharge_options_html();
@@ -68,17 +72,22 @@ add_action( 'wp_ajax_set_custom_surcharge', 'cth_set_custom_surcharge' );
 add_action( 'wp_ajax_nopriv_set_custom_surcharge', 'cth_set_custom_surcharge' );
 ?>
 <script>
-function cth_update_custom_surcharge(optionId) {
-    jQuery.ajax({
-        type: 'POST',
-        url: '<?php echo admin_url( 'admin-ajax.php' ); ?>',
-        data: {
-            action: 'set_custom_surcharge',
-            custom_surcharge: optionId
-        },
-        success: function() {
-            jQuery(document.body).trigger('update_checkout');
-        }
+jQuery(document).ready(function($) {
+    // Verwende Delegation, damit die Handler auch nach einem Fragment-Update weiterhin aktiv sind.
+    $('body').on('change', 'input[name="custom_surcharge"]', function() {
+        var optionId = $(this).val();
+        $.ajax({
+            type: 'POST',
+            url: '<?php echo admin_url( 'admin-ajax.php' ); ?>',
+            data: {
+                action: 'set_custom_surcharge',
+                custom_surcharge: optionId
+            },
+            success: function() {
+                // Löst ein Checkout-Update aus, das unsere update_order_review_fragments filtert.
+                $(document.body).trigger('update_checkout');
+            }
+        });
     });
-}
+});
 </script>
