@@ -12,19 +12,18 @@ function cth_register_admin_menu() {
         'manage_options',                                   // Berechtigung
         'custom-tax-handler',                               // Menü-Slug
         'cth_main_page',                                    // Callback-Funktion für die Hauptseite
-        'dashicons-calculator',                          // Icon
+        'dashicons-admin-generic',                          // Icon
         66                                                // Position (optional)
     );
     
     // Untermenü hinzufügen für die Steuereinstellungen
     add_submenu_page(
-        'custom-tax-handler',                     // Eltern-Menü-Slug
-        __('Zuschläge und Steuern', 'custom-tax-handler'), // Seiten-Titel
-        __('Zuschläge und Steuern', 'custom-tax-handler'), // Menü-Titel
-        'manage_options',                         // Berechtigung
-        'cth-tax-surcharge-settings',             // Menü-Slug
-        'cth_tax_surcharge_settings_page'         // Callback-Funktion
-    );
+        'custom-tax-handler',                   // Eltern-Slug (das Hauptmenü)
+        __( 'Steuereinstellungen', 'custom-tax-handler' ), // Seiten-Titel
+        __( 'Steuereinstellungen', 'custom-tax-handler' ), // Menü-Titel
+        'manage_options',                       // Berechtigung
+        'cth-tax-surcharge-settings',           // Menü-Slug
+        'cth_tax_surcharge_settings_page'       // Callback-Funktion
     );
 }
 
