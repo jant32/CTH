@@ -116,7 +116,8 @@ if ( ! empty( $additional_tax_classes ) ) {
                                         $rate_percent = 0;
                                         if ( ! empty( $rates ) ) {
                                             $rate_data = current( $rates );
-                                            $rate_percent = floatval( $rate_data['tax_rate'] );
+                                            // Falls $rate_data ein Objekt ist, benutze die Eigenschaft, sonst den Array-Zugriff:
+                                            $rate_percent = floatval( is_array( $rate_data ) ? $rate_data['tax_rate'] : $rate_data->tax_rate );
                                         }
                                         $display_rate = number_format( $rate_percent, 2 ) . '%';
                                         ?>
@@ -150,7 +151,7 @@ if ( ! empty( $additional_tax_classes ) ) {
                                 $rate_percent = 0;
                                 if ( ! empty( $rates ) ) {
                                     $rate_data = current( $rates );
-                                    $rate_percent = floatval( $rate_data['tax_rate'] );
+                                    $rate_percent = floatval( is_array( $rate_data ) ? $rate_data['tax_rate'] : $rate_data->tax_rate );
                                 }
                                 $display_rate = number_format( $rate_percent, 2 ) . '%';
                                 ?>
@@ -205,7 +206,7 @@ jQuery(document).ready(function($) {
                     $rate_percent = 0;
                     if (!empty($rates)) {
                         $rate_data = current($rates);
-                        $rate_percent = floatval($rate_data["tax_rate"]);
+                        $rate_percent = floatval(is_array($rate_data) ? $rate_data["tax_rate"] : $rate_data->tax_rate);
                     }
                     echo number_format($rate_percent, 2) . "%";
                 ?></option>';
