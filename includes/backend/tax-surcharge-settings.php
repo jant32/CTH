@@ -113,7 +113,7 @@ function cth_render_tax_surcharge_settings_page() {
     }
     ?>
     <div class="wrap">
-        <h1><?php _e( 'Zuschlags-Einstellungen', 'custom-tax-handler' ); ?></h1>
+        <h1><?php _e( 'Zuschläge und Steuern', 'custom-tax-handler' ); ?></h1>
         <form method="post" action="">
             <?php wp_nonce_field( 'cth_tax_surcharge_settings_nonce' ); ?>
             <table class="widefat fixed" cellspacing="0" id="cth-surcharge-table">

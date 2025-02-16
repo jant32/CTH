@@ -16,11 +16,11 @@ function cth_register_admin_menu() {
         66                                                // Position (optional)
     );
     
-    // Untermenü hinzufügen für die Steuereinstellungen
+    // Untermenü hinzufügen für die Zuschläge und Steuern
     add_submenu_page(
         'custom-tax-handler',                   // Eltern-Slug (das Hauptmenü)
-        __( 'Steuereinstellungen', 'custom-tax-handler' ), // Seiten-Titel
-        __( 'Steuereinstellungen', 'custom-tax-handler' ), // Menü-Titel
+        __( 'Zuschläge und Steuern', 'custom-tax-handler' ), // Seiten-Titel
+        __( 'Zuschläge und Steuern', 'custom-tax-handler' ), // Menü-Titel
         'manage_options',                       // Berechtigung
         'cth-tax-surcharge-settings',           // Menü-Slug
         'cth_tax_surcharge_settings_page'       // Callback-Funktion
