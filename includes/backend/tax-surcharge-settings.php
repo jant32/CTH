@@ -3,6 +3,12 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Prüfe, ob WooCommerce geladen ist – insbesondere die Klasse WC_Tax
+if ( ! class_exists( 'WC_Tax' ) ) {
+    echo '<div class="error"><p>WooCommerce ist nicht aktiv oder noch nicht geladen. Bitte aktivieren Sie WooCommerce.</p></div>';
+    return;
+}
+
 global $wpdb;
 $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
 
@@ -110,14 +116,13 @@ if ( ! empty( $additional_tax_classes ) ) {
                                 <select name="tax_class[]">
                                     <?php foreach ( $tax_classes as $slug => $label ) : ?>
                                         <?php
-                                        // Für Standardsteuerklasse wird intern ein leerer String verwendet
+                                        // Für die Standardsteuerklasse wird intern ein leerer String verwendet
                                         $lookup = ( 'standard' === $slug ) ? '' : $slug;
                                         $rates = WC_Tax::get_rates_for_tax_class( $lookup );
                                         $rate_percent = 0;
                                         if ( ! empty( $rates ) ) {
                                             $rate_data = current( $rates );
-                                            // Falls $rate_data ein Objekt ist, benutze die Eigenschaft, sonst den Array-Zugriff:
-                                            $rate_percent = floatval( is_array( $rate_data ) ? $rate_data['tax_rate'] : $rate_data->tax_rate );
+                                            $rate_percent = floatval( is_array($rate_data) ? $rate_data['tax_rate'] : $rate_data->tax_rate );
                                         }
                                         $display_rate = number_format( $rate_percent, 2 ) . '%';
                                         ?>
@@ -151,7 +156,7 @@ if ( ! empty( $additional_tax_classes ) ) {
                                 $rate_percent = 0;
                                 if ( ! empty( $rates ) ) {
                                     $rate_data = current( $rates );
-                                    $rate_percent = floatval( is_array( $rate_data ) ? $rate_data['tax_rate'] : $rate_data->tax_rate );
+                                    $rate_percent = floatval( is_array($rate_data) ? $rate_data['tax_rate'] : $rate_data->tax_rate );
                                 }
                                 $display_rate = number_format( $rate_percent, 2 ) . '%';
                                 ?>
