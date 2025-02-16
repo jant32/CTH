@@ -1,16 +1,18 @@
 <?php
 // Sicherstellen, dass WordPress-Umgebung existiert
-if (!defined('ABSPATH')) {
+if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
 global $wpdb;
+
+/** Bestehende Tabelle: wp_custom_order_data **/
 $table_name = $wpdb->prefix . 'custom_order_data';
 
 // Prüfen, ob die Tabelle bereits existiert
 $table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'");
 
-if (!$table_exists) {
+if ( ! $table_exists ) {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
     $charset_collate = $wpdb->get_charset_collate();
@@ -39,18 +41,15 @@ if (!$table_exists) {
     error_log("DEBUG: Datenbanktabelle {$table_name} existiert bereits.");
 }
 
-global $wpdb;
-$table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
+/** Neue Tabelle: wp_custom_tax_surcharge_handler **/
+$new_table = $wpdb->prefix . 'custom_tax_surcharge_handler';
+$new_table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$new_table}'");
 
-// Prüfen, ob die Tabelle bereits existiert
-$table_exists = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'");
-
-if (!$table_exists) {
+if ( ! $new_table_exists ) {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
     $charset_collate = $wpdb->get_charset_collate();
 
-    $sql = "CREATE TABLE $table_name (
+    $sql_new = "CREATE TABLE {$new_table} (
         id mediumint(9) NOT NULL AUTO_INCREMENT,
         order_id mediumint(9) NOT NULL,
         surcharge_name varchar(255) NOT NULL,
@@ -60,16 +59,17 @@ if (!$table_exists) {
         tax_class varchar(100) NOT NULL,
         PRIMARY KEY  (id),
         KEY order_id (order_id)
-      ) $charset_collate;";
+    ) $charset_collate;";
 
-    // Überprüfen, ob die Tabelle nun existiert
-    $table_check = $wpdb->get_var("SHOW TABLES LIKE '{$table_name}'");
+    dbDelta($sql_new);
 
-    if ($table_check === $table_name) {
-        error_log("DEBUG: Datenbanktabelle {$table_name} erfolgreich erstellt.");
+    $new_table_check = $wpdb->get_var("SHOW TABLES LIKE '{$new_table}'");
+
+    if ($new_table_check === $new_table) {
+        error_log("DEBUG: Datenbanktabelle {$new_table} erfolgreich erstellt.");
     } else {
-        error_log("ERROR: Datenbanktabelle {$table_name} konnte nicht erstellt werden.");
+        error_log("ERROR: Datenbanktabelle {$new_table} konnte nicht erstellt werden.");
     }
 } else {
-    error_log("DEBUG: Datenbanktabelle {$table_name} existiert bereits.");
+    error_log("DEBUG: Datenbanktabelle {$new_table} existiert bereits.");
 }

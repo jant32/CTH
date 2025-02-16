@@ -3,30 +3,34 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Prüfe, ob WooCommerce geladen ist – insbesondere die Klasse WC_Tax
+if ( ! class_exists( 'WC_Tax' ) ) {
+    echo '<div class="error"><p>WooCommerce ist nicht aktiv oder noch nicht geladen. Bitte überprüfen Sie Ihre WooCommerce-Installation.</p></div>';
+    return;
+}
+
 global $wpdb;
 $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
 
-// Bei Formularübermittlung speichern
+// Falls das Formular abgesendet wurde, verarbeite die Eingaben
 if ( isset( $_POST['cth_save_settings'] ) ) {
-    // Erwarte, dass alle Felder als Arrays übergeben werden
-    $surcharge_names = isset( $_POST['surcharge_name'] ) ? $_POST['surcharge_name'] : array();
-    $software_names  = isset( $_POST['software_name'] ) ? $_POST['software_name'] : array();
-    $surcharge_types = isset( $_POST['surcharge_type'] ) ? $_POST['surcharge_type'] : array();
-    $surcharge_values= isset( $_POST['surcharge_value'] ) ? $_POST['surcharge_value'] : array();
-    $tax_classes     = isset( $_POST['tax_class'] ) ? $_POST['tax_class'] : array();
+    $surcharge_names   = isset( $_POST['surcharge_name'] ) ? $_POST['surcharge_name'] : array();
+    $software_names    = isset( $_POST['software_name'] ) ? $_POST['software_name'] : array();
+    $surcharge_types   = isset( $_POST['surcharge_type'] ) ? $_POST['surcharge_type'] : array();
+    $surcharge_values  = isset( $_POST['surcharge_value'] ) ? $_POST['surcharge_value'] : array();
+    $tax_classes       = isset( $_POST['tax_class'] ) ? $_POST['tax_class'] : array();
 
     $errors = array();
-    $data = array();
+    $data   = array();
     $row_count = count( $surcharge_names );
     for ( $i = 0; $i < $row_count; $i++ ) {
-        // Alle Werte trimmen
         $name     = trim( $surcharge_names[ $i ] );
         $software = trim( $software_names[ $i ] );
         $type     = trim( $surcharge_types[ $i ] );
         $value    = trim( $surcharge_values[ $i ] );
         $taxClass = trim( $tax_classes[ $i ] );
 
-        // Überspringe vollständig leere Zeilen
+        // Überspringe komplett leere Zeilen
         if ( empty( $name ) && empty( $software ) && empty( $type ) && empty( $value ) && empty( $taxClass ) ) {
             continue;
         }
@@ -50,7 +54,7 @@ if ( isset( $_POST['cth_save_settings'] ) ) {
     if ( empty( $errors ) ) {
         // Lösche alle bisherigen Einträge
         $wpdb->query( "TRUNCATE TABLE $table_name" );
-        // Füge alle neuen Einträge ein
+        // Füge die neuen Einträge ein
         foreach ( $data as $row ) {
             $wpdb->insert(
                 $table_name,
@@ -66,10 +70,10 @@ if ( isset( $_POST['cth_save_settings'] ) ) {
     }
 }
 
-// Hole bereits gespeicherte Daten
+// Lade bestehende Einstellungen
 $existing_data = $wpdb->get_results( "SELECT * FROM $table_name ORDER BY id ASC", ARRAY_A );
 
-// Hole WooCommerce Steuerklassen
+// Hole die in WooCommerce definierten Steuerklassen
 $additional_tax_classes = WC_Tax::get_tax_classes();
 $tax_classes = array( 'standard' => __( 'Standard', 'woocommerce' ) );
 if ( ! empty( $additional_tax_classes ) ) {
@@ -108,7 +112,7 @@ if ( ! empty( $additional_tax_classes ) ) {
                                 <select name="tax_class[]">
                                     <?php foreach ( $tax_classes as $slug => $label ) : ?>
                                         <?php
-                                        // WooCommerce verwendet für Standardsteuerklasse einen leeren String, daher:
+                                        // Für "standard" wird WooCommerce intern als leerer String genutzt.
                                         $lookup = ( 'standard' === $slug ) ? '' : $slug;
                                         $rates = WC_Tax::get_rates_for_tax_class( $lookup );
                                         $rate_percent = 0;
@@ -169,7 +173,7 @@ if ( ! empty( $additional_tax_classes ) ) {
 </div>
 <script type="text/javascript">
 jQuery(document).ready(function($) {
-    // Dynamisches Hinzufügen von Zeilen: Sobald alle Felder einer Zeile ausgefüllt sind, wird automatisch eine neue Zeile angehängt.
+    // Dynamisch neue Zeilen hinzufügen, wenn alle Felder einer Zeile ausgefüllt sind
     function addNewRowIfNeeded() {
         var addRow = true;
         $('#cth-surcharge-table tbody tr').each(function() {
