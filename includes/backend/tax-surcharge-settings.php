@@ -14,7 +14,7 @@ function cth_render_tax_surcharge_settings_page() {
     if ( ! class_exists( 'WC_Tax' ) ) {
         echo '<div class="error"><p>WooCommerce ist nicht aktiv oder noch nicht geladen. Bitte aktivieren Sie WooCommerce.</p></div>';
         return;
-    }
+    }}
     
     global $wpdb;
     $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
@@ -233,5 +233,5 @@ function cth_render_tax_surcharge_settings_page() {
         });
     });
     </script>
-}<?php
+<?php
 ob_end_flush();
