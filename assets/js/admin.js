@@ -1,16 +1,15 @@
 jQuery(document).ready(function($) {
-    // Overlay-Funktionen für visuelles Feedback
+
+    // Overlay-Funktionen
     function showLoadingOverlay() {
         var $container = $('#woocommerce-order-items');
         if (!$container.length) {
             console.log("Container #woocommerce-order-items nicht gefunden.");
             return;
         }
-        // Stelle sicher, dass der Container relativ positioniert ist
         if ($container.css('position') === 'static') {
             $container.css('position', 'relative');
         }
-        // Füge das Overlay ein, falls es noch nicht existiert
         if ($('#loading-overlay').length === 0) {
             var overlayHtml = '<div id="loading-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center;">' +
                               '<div class="spinner" style="width: 40px; height: 40px; border: 4px solid transparent; border-top: 4px solid #fff; border-radius: 50%; animation: spin 1s linear infinite;"></div>' +
@@ -33,26 +32,25 @@ jQuery(document).ready(function($) {
     
     // Einheitliche Funktion zur Aktualisierung der Kundenart
     function updateCustomerTypeAJAX(orderId) {
-        // Suche nach dem Dropdown – im Admin-Bereich wird z. B. #customer_type_dropdown verwendet,
-        // im Frontend vielleicht #customer_type
+        // Versuche, das Dropdown-Element zu finden:
         var $select = $('#customer_type');
         if (!$select.length) {
             $select = $('#customer_type_dropdown');
         }
-        if ($select.length) {
-            // Falls Select2 verwendet wird, schließe es
-            if ($select.data('select2')) {
-                $select.select2('close');
-            } else {
-                $select.blur();
-            }
+        if (!$select.length) {
+            console.log("Kein Dropdown mit der ID #customer_type oder #customer_type_dropdown gefunden.");
+            return;
         }
+        // Falls Select2 verwendet wird, schließe das Dropdown
+        if ($select.data('select2')) {
+            $select.select2('close');
+        } else {
+            $select.blur();
+        }
+    
         var customerType = $select.val();
-        
-        // Zeige den Overlay-Spinner
         showLoadingOverlay();
-        
-        // Baue die Daten zusammen – falls im Admin-Bereich, wird auch die Order-ID mitgesendet
+    
         var ajaxData = {
             action: 'update_surcharge',
             customer_type: customerType
@@ -60,13 +58,13 @@ jQuery(document).ready(function($) {
         if (orderId) {
             ajaxData.order_id = orderId;
         }
-        
-        // Nutze adminSurcharge.ajaxurl und nonce, falls verfügbar, sonst global ajaxurl
+    
+        // Verwende adminSurcharge.ajaxurl falls definiert, sonst global ajaxurl
         var ajaxUrl = (typeof adminSurcharge !== 'undefined' && adminSurcharge.ajaxurl) ? adminSurcharge.ajaxurl : ajaxurl;
         if (typeof adminSurcharge !== 'undefined' && adminSurcharge.nonce) {
             ajaxData._ajax_nonce = adminSurcharge.nonce;
         }
-        
+    
         $.ajax({
             type: 'POST',
             url: ajaxUrl,
@@ -74,10 +72,7 @@ jQuery(document).ready(function($) {
             success: function(response) {
                 hideLoadingOverlay();
                 if (response.success) {
-                    // Bei Admin: Optionale Erfolgsmeldung anzeigen
-                    if (orderId) {
-                        alert("Zuschlag erfolgreich aktualisiert!");
-                    }
+                    // Erfolg: Seite neu laden (oder UI anderweitig aktualisieren)
                     location.reload();
                 } else {
                     alert('Fehler: ' + (response.data && response.data.message ? response.data.message : 'Unbekannter Fehler'));
@@ -90,18 +85,16 @@ jQuery(document).ready(function($) {
         });
     }
     
-    // Event-Bindings:
-    // Falls das Admin-Dropdown (#customer_type_dropdown) existiert, binde den Change-Event (mit Order-ID)
-    if ($('#customer_type_dropdown').length) {
-        $('#customer_type_dropdown').on('change', function() {
-            var orderId = $('#post_ID').val(); // Bestell-ID im Admin-Bereich
-            updateCustomerTypeAJAX(orderId);
-        });
-    }
-    // Falls das normale Dropdown (#customer_type) existiert (z.B. im Frontend), binde den Change-Event
-    else if ($('#customer_type').length) {
-        $('#customer_type').on('change', function() {
-            updateCustomerTypeAJAX(); // Ohne Order-ID
-        });
-    }
+    // Delegiertes Binding für beide mögliche IDs
+    $(document).on('change', '#customer_type, #customer_type_dropdown', function() {
+        // Im Admin-Bereich: Order-ID aus #post_ID (sofern vorhanden) übergeben
+        var orderId = $('#post_ID').val() || null;
+        updateCustomerTypeAJAX(orderId);
+    });
+    
+    // Zusätzlich, falls Select2 verwendet wird, binde auch den "select2:select" Event
+    $(document).on('select2:select', '#customer_type, #customer_type_dropdown', function(e) {
+        var orderId = $('#post_ID').val() || null;
+        updateCustomerTypeAJAX(orderId);
+    });
 });
