@@ -22,7 +22,7 @@ add_action('admin_enqueue_scripts', function($hook) {
     // Wir laden die Skripte nur auf den Seiten, wo sie gebraucht werden
     if ( 'post.php' === $hook || 'post-new.php' === $hook ) {
         // Haupt-JS (admin.js) laden
-        wp_enqueue_script('cth-admin-js', CTH_PLUGIN_URL . 'assets/js/admin.js', ['jquery'], '3.0.0', true );
+        wp_enqueue_script('cth-admin-js', CTH_PLUGIN_URL . 'assets/js/cth-admin.js', ['jquery'], '3.0.0', true );
         // Lokalisiere das Script für AJAX-Zugriffe
         wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
     }
