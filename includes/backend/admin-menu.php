@@ -7,8 +7,8 @@ add_action( 'admin_menu', 'cth_register_admin_menu' );
 function cth_register_admin_menu() {
     // Hauptmenü hinzufügen (falls noch nicht vorhanden)
     add_menu_page(
-        __( 'Custom Tax and Surcharge Handler', 'custom-tax-handler' ),  // Seiten-Titel
-        __( 'Custom Tax and Surcharge Handler', 'custom-tax-handler' ),  // Menü-Titel
+        __( 'Custom Tax Handler', 'custom-tax-handler' ),  // Seiten-Titel
+        __( 'Custom Tax Handler', 'custom-tax-handler' ),  // Menü-Titel
         'manage_options',                                   // Berechtigung
         'custom-tax-handler',                               // Menü-Slug
         'cth_main_page',                                    // Callback-Funktion für die Hauptseite
