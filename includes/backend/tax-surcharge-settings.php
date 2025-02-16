@@ -1,5 +1,5 @@
 <?php
-ob_start(); // Startet das Output Buffering
+ob_start(); // Output Buffering starten
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
@@ -8,17 +8,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Rendert die Admin-Seite für Steuereinstellungen für Zuschläge.
  */
-function cth_render_tax_surcharge_settings_page() {
+function cth_render_tax_surcharge_settings_page()
+{
 
     // Prüfe, ob WooCommerce geladen ist – insbesondere die Klasse WC_Tax
     if ( ! class_exists( 'WC_Tax' ) ) {
         echo '<div class="error"><p>WooCommerce ist nicht aktiv oder noch nicht geladen. Bitte aktivieren Sie WooCommerce.</p></div>';
         return;
-    }}
-    
+    }
+
     global $wpdb;
     $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
-    
+
     // Formularverarbeitung
     if ( isset( $_POST['cth_save_settings'] ) ) {
         $surcharge_names   = isset( $_POST['surcharge_name'] ) ? $_POST['surcharge_name'] : array();
@@ -76,13 +77,13 @@ function cth_render_tax_surcharge_settings_page() {
             }
         }
     }
-    
+
     // Hole bereits gespeicherte Daten als assoziatives Array
     $existing_data = $wpdb->get_results( "SELECT * FROM $table_name ORDER BY id ASC", ARRAY_A );
     if ( ! is_array( $existing_data ) ) {
         $existing_data = json_decode( json_encode( $existing_data ), true );
     }
-    
+
     // Hole die in WooCommerce definierten Steuerklassen:
     $additional_tax_classes = WC_Tax::get_tax_classes();
     $tax_classes = array( 'standard' => __( 'Standard', 'woocommerce' ) );
@@ -233,5 +234,5 @@ function cth_render_tax_surcharge_settings_page() {
         });
     });
     </script>
-<?php
+}<?php
 ob_end_flush();
