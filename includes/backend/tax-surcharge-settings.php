@@ -1,27 +1,34 @@
 <?php
-ob_start(); // Output Buffering starten
+ob_start(); // Start Output Buffering
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
 /**
- * Rendert die Admin-Seite für die individuellen Zuschlags-Regeln.
+ * Rendert die Admin-Seite für individuelle Zuschlags-Regeln.
+ *
+ * Diese Seite ermöglicht es dem Administrator, Regeln einzutragen, die aus
+ * einem benutzerfreundlichen Namen, einer Zuschlagsart (fest oder prozentual),
+ * einem numerischen Zuschlagswert und einer Steuerklasse (als Dropdown, das den jeweiligen Steuersatz in Prozent anzeigt) bestehen.
+ *
+ * Neue Zeilen werden dynamisch hinzugefügt, wenn alle Felder einer Zeile ausgefüllt sind.
+ * Alle Spalten einer Zeile müssen ausgefüllt sein, sonst wird eine Fehlermeldung angezeigt.
+ * Die Eintragungen werden in der Datenbanktabelle wp_custom_tax_surcharge_handler gespeichert.
  */
 function cth_render_tax_surcharge_settings_page() {
 
-    // Prüfe, ob WooCommerce geladen ist – insbesondere WC_Tax (wird für Steuerklassen benötigt)
+    // Prüfe, ob WooCommerce geladen ist (benötigt für WC_Tax)
     if ( ! class_exists( 'WC_Tax' ) ) {
         echo '<div class="error"><p>WooCommerce ist nicht aktiv oder noch nicht geladen. Bitte aktivieren Sie WooCommerce.</p></div>';
         return;
     }
-
+    
     global $wpdb;
     $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
 
-    // Formularverarbeitung: Wenn der "Einstellungen speichern" Button gedrückt wurde
+    // Formularverarbeitung
     if ( isset( $_POST['cth_save_settings'] ) && check_admin_referer( 'cth_tax_surcharge_settings_nonce' ) ) {
-        // Hole die Formulardaten (alle als Arrays)
         $surcharge_names   = isset( $_POST['surcharge_name'] ) ? $_POST['surcharge_name'] : array();
         $surcharge_types   = isset( $_POST['surcharge_type'] ) ? $_POST['surcharge_type'] : array();
         $surcharge_values  = isset( $_POST['surcharge_value'] ) ? $_POST['surcharge_value'] : array();
@@ -35,17 +42,15 @@ function cth_render_tax_surcharge_settings_page() {
             $type     = trim( $surcharge_types[ $i ] );
             $value    = trim( $surcharge_values[ $i ] );
             $taxClass = trim( $tax_classes_input[ $i ] );
-
-            // Überspringe komplett leere Zeilen (alle Felder leer)
+            // Überspringe komplett leere Zeilen
             if ( empty( $name ) && empty( $type ) && empty( $value ) && empty( $taxClass ) ) {
                 continue;
             }
-            // Prüfe, ob alle Felder gefüllt sind
+            // Alle Felder müssen ausgefüllt sein
             if ( empty( $name ) || empty( $type ) || empty( $value ) || empty( $taxClass ) ) {
-                $errors[] = "Alle Spalten in Zeile " . ( $i + 1 ) . " müssen ausgefüllt sein.";
+                $errors[] = "Alle Felder in Zeile " . ( $i + 1 ) . " müssen ausgefüllt sein.";
                 continue;
             }
-            // Prüfe, ob der Zuschlagswert numerisch ist
             if ( ! is_numeric( $value ) ) {
                 $errors[] = "Der Zuschlagswert in Zeile " . ( $i + 1 ) . " muss eine Zahl sein.";
                 continue;
@@ -58,7 +63,7 @@ function cth_render_tax_surcharge_settings_page() {
             );
         }
         if ( empty( $errors ) ) {
-            // Speichere die neuen Einstellungen: Zuerst alle bisherigen Einträge löschen, dann einfügen
+            // Lösche alle bisherigen Einträge
             $wpdb->query( "TRUNCATE TABLE $table_name" );
             foreach ( $data as $row ) {
                 $wpdb->insert(
@@ -75,7 +80,7 @@ function cth_render_tax_surcharge_settings_page() {
         }
     }
 
-    // Lade vorhandene Einträge aus der Datenbank als assoziatives Array
+    // Lade vorhandene Einträge
     $existing_data = $wpdb->get_results( "SELECT * FROM $table_name ORDER BY id ASC", ARRAY_A );
     if ( ! is_array( $existing_data ) ) {
         $existing_data = json_decode( json_encode( $existing_data ), true );
@@ -119,7 +124,6 @@ function cth_render_tax_surcharge_settings_page() {
                                     <select name="tax_class[]">
                                         <?php foreach ( $tax_options as $slug => $class_name ) : ?>
                                             <?php
-                                            // WooCommerce verwendet für Standardsteuerklasse intern einen leeren String.
                                             $lookup = ( 'standard' === $slug ) ? '' : $slug;
                                             $rates = WC_Tax::get_rates_for_tax_class( $lookup );
                                             $rate = 0;
@@ -142,7 +146,7 @@ function cth_render_tax_surcharge_settings_page() {
                         <td><input type="text" name="surcharge_name[]" value="" /></td>
                         <td>
                             <select name="surcharge_type[]">
-                                <option value="">-- <?php _e( 'Auswählen', 'custom-tax-handler' ); ?> --</option>
+                                <option value=""><?php _e( '-- Auswahl --', 'custom-tax-handler' ); ?></option>
                                 <option value="fest"><?php _e( 'Fest', 'custom-tax-handler' ); ?></option>
                                 <option value="prozentual"><?php _e( 'Prozentual', 'custom-tax-handler' ); ?></option>
                             </select>
@@ -197,23 +201,23 @@ function cth_render_tax_surcharge_settings_page() {
                    var newRow = '<tr class="cth-new-row">' +
                         '<td><input type="text" name="surcharge_name[]" value="" /></td>' +
                         '<td><select name="surcharge_type[]">' +
-                             '<option value="">-- <?php _e( 'Auswählen', 'custom-tax-handler' ); ?> --</option>' +
+                             '<option value="">-- <?php _e( 'Select', 'custom-tax-handler' ); ?> --</option>' +
                              '<option value="fest"><?php _e( 'Fest', 'custom-tax-handler' ); ?></option>' +
                              '<option value="prozentual"><?php _e( 'Prozentual', 'custom-tax-handler' ); ?></option>' +
                         '</select></td>' +
                         '<td><input type="text" name="surcharge_value[]" value="" /></td>' +
                         '<td><select name="tax_class[]">';
-                   <?php foreach ( $tax_options as $slug => $class_name ) : ?>
-                        newRow += '<option value="<?php echo esc_attr( $slug ); ?>"><?php 
-                             $lookup = ($slug === "standard") ? "" : $slug;
-                             $rates = WC_Tax::get_rates_for_tax_class( $lookup );
-                             $rate = 0;
-                             if(!empty($rates)){
-                                  $rate_data = current($rates);
-                                  $rate = is_array($rate_data) ? floatval($rate_data["tax_rate"]) : floatval($rate_data->tax_rate);
-                             }
-                             echo number_format($rate, 2) . "%";
-                        ?></option>';
+                   <?php foreach ( $tax_options as $slug => $class_name ) : 
+                           $lookup = ($slug == 'standard') ? '' : $slug;
+                           $rates = WC_Tax::get_rates_for_tax_class($lookup);
+                           $rate = 0;
+                           if(!empty($rates)){
+                               $rate_data = current($rates);
+                               $rate = is_array($rate_data) ? floatval($rate_data['tax_rate']) : floatval($rate_data->tax_rate);
+                           }
+                           $display_rate = number_format($rate, 2)."%";
+                   ?>
+                   newRow += '<option value="<?php echo esc_attr($slug); ?>"><?php echo esc_html($display_rate); ?></option>';
                    <?php endforeach; ?>
                    newRow += '</select></td></tr>';
                    $('#cth-surcharge-table tbody').append(newRow);
@@ -230,4 +234,5 @@ function cth_render_tax_surcharge_settings_page() {
     });
     </script>
 <?php
+}
 ob_end_flush();
