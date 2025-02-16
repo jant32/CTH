@@ -19,15 +19,16 @@ define('CTH_PLUGIN_URL', plugin_dir_url(__FILE__));
 /** Enqueue Scripts & Styles im Admin-Bereich **/
 
 add_action('admin_enqueue_scripts', function($hook) {
-    // Wir laden die Skripte nur auf den Seiten, wo sie gebraucht werden
     if ( 'post.php' === $hook || 'post-new.php' === $hook ) {
-        // Haupt-JS (admin.js) laden
-        wp_enqueue_script('cth-admin-js', CTH_PLUGIN_URL . 'assets/js/cth-admin.js', ['jquery'], '3.0.0', true );
-        // Lokalisiere das Script für AJAX-Zugriffe
+        wp_enqueue_script(
+            'cth-admin-js', 
+            CTH_PLUGIN_URL . 'assets/js/cth-admin.js', 
+            ['jquery'], 
+            '3.0.0', 
+            true
+        );
         wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
     }
-    
-    // Admin CSS laden – wir laden es auf allen Admin-Seiten
     wp_enqueue_style('cth-admin-css', CTH_PLUGIN_URL . 'assets/css/admin.css');
 });
 
