@@ -8,11 +8,11 @@ $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
 
 // Falls das Formular abgesendet wurde, verarbeite die Eingaben
 if ( isset( $_POST['cth_save_settings'] ) ) {
-    $surcharge_names    = isset( $_POST['surcharge_name'] ) ? $_POST['surcharge_name'] : array();
-    $software_names     = isset( $_POST['software_name'] ) ? $_POST['software_name'] : array();
-    $surcharge_types    = isset( $_POST['surcharge_type'] ) ? $_POST['surcharge_type'] : array();
-    $surcharge_values   = isset( $_POST['surcharge_value'] ) ? $_POST['surcharge_value'] : array();
-    $tax_classes_input  = isset( $_POST['tax_class'] ) ? $_POST['tax_class'] : array();
+    $surcharge_names   = isset( $_POST['surcharge_name'] ) ? $_POST['surcharge_name'] : array();
+    $software_names    = isset( $_POST['software_name'] ) ? $_POST['software_name'] : array();
+    $surcharge_types   = isset( $_POST['surcharge_type'] ) ? $_POST['surcharge_type'] : array();
+    $surcharge_values  = isset( $_POST['surcharge_value'] ) ? $_POST['surcharge_value'] : array();
+    $tax_classes_input = isset( $_POST['tax_class'] ) ? $_POST['tax_class'] : array();
 
     $errors = array();
     $data   = array();
@@ -48,7 +48,7 @@ if ( isset( $_POST['cth_save_settings'] ) ) {
     if ( empty( $errors ) ) {
         // Lösche alle bisherigen Einträge
         $wpdb->query( "TRUNCATE TABLE $table_name" );
-        // Füge die neuen Einträge ein
+        // Füge alle neuen Einträge ein
         foreach ( $data as $row ) {
             $wpdb->insert(
                 $table_name,
@@ -66,11 +66,12 @@ if ( isset( $_POST['cth_save_settings'] ) ) {
 
 // Hole bereits gespeicherte Daten als assoziatives Array
 $existing_data = $wpdb->get_results( "SELECT * FROM $table_name ORDER BY id ASC", ARRAY_A );
-if ( empty( $existing_data ) || ! is_array( $existing_data ) ) {
-    $existing_data = array();
+if ( ! is_array( $existing_data ) ) {
+    // Falls als stdClass-Objekte zurückgegeben, in Array umwandeln
+    $existing_data = json_decode( json_encode( $existing_data ), true );
 }
 
-// Hole die in WooCommerce definierten Steuerklassen
+// Hole die in WooCommerce definierten Steuerklassen:
 $additional_tax_classes = WC_Tax::get_tax_classes();
 $tax_classes = array( 'standard' => __( 'Standard', 'woocommerce' ) );
 if ( ! empty( $additional_tax_classes ) ) {
