@@ -139,14 +139,15 @@ function cth_render_tax_surcharge_settings_page() {
                                 </td>
                                 <td>
                                     <div class="surcharge-value-wrapper" style="position:relative;">
-                                        <input type="text" name="surcharge_value[]" class="surcharge-value" value="<?php 
-                                            // Bei prozentual: Wert * 100 anzeigen
-                                            if ( $row['surcharge_type'] === 'prozentual' ) {
-                                                echo esc_attr( number_format( $row['surcharge_value'] * 100, 2 ) );
-                                            } else {
-                                                echo esc_attr( number_format( $row['surcharge_value'], 2 ) );
-                                            }
-                                        ?>" />
+                                        <input type="text" name="surcharge_value[]" class="surcharge-value" style="text-align: right;" value="<?php 
+                                                if ( $row['surcharge_type'] === 'prozentual' ) {
+                                                    // Für Prozentwerte: multipliziere mit 100 und formatiere mit Komma als Dezimaltrennzeichen
+                                                    echo esc_attr( number_format( $row['surcharge_value'] * 100, 2, ',', '' ) );
+                                                } else {
+                                                    // Für feste Beträge: formatiere mit zwei Nachkommastellen, Komma als Dezimaltrennzeichen
+                                                    echo esc_attr( number_format( $row['surcharge_value'], 2, ',', '' ) );
+                                                }
+                                            ?>" />
                                         <span class="unit" style="position:absolute; right:5px; top:0; line-height: 32px;">
                                             <?php echo ($row['surcharge_type'] === 'prozentual') ? '%' : '€'; ?>
                                         </span>
