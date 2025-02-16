@@ -16,12 +16,14 @@ function cth_display_custom_surcharge_options_checkout( $checkout ) {
     $selected_option = WC()->session->get( 'custom_surcharge', 0 );
     
     if ( ! empty( $options ) ) {
+        // Um Duplikate bei Fragment-Updates zu vermeiden, wird alles in einen Container mit eindeutiger ID verpackt.
+        echo '<div id="cth_custom_surcharge_options">';
         echo '<p><strong>' . esc_html__( 'Kundenart', 'custom-tax-handler' ) . ' *</strong></p>';
         echo '<p class="form-row form-row-wide">';
         foreach ( $options as $option ) {
             // Bestimme den anzuzeigenden Zuschlagswert:
             if ( $option['surcharge_type'] === 'prozentual' ) {
-                // Der in der DB gespeicherte Wert ist ein Dezimalwert, z. B. 0.25 → 25,00%
+                // Der in der DB gespeicherte Wert ist ein Dezimalwert, z. B. 0.25 → 25,00%
                 $display_value = number_format( $option['surcharge_value'] * 100, 2, ',', '' ) . '%';
             } else {
                 // Fest: als Währungswert mit zwei Nachkommastellen und €-Symbol
@@ -33,6 +35,7 @@ function cth_display_custom_surcharge_options_checkout( $checkout ) {
             echo '</label>';
         }
         echo '</p>';
+        echo '</div>';
         ?>
         <script>
             function updateCustomSurcharge(optionId) {
