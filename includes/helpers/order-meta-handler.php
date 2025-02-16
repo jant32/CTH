@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Aktualisiert den Kundenart- und Steuerklasse-Wert in der Custom-Tabelle (und als Order-Meta)
- * und berechnet den Kundenart-Zuschlag neu sowie passt die Steuerklassen der Bestellpositionen an.
+ * und berechnet den Kundenart-Zuschlag neu sowie passt die Steuerklasse der Bestellpositionen an.
  *
  * Diese Funktion wird aufgerufen, wenn im Admin-Bereich die Bestellung gespeichert wird.
  *
@@ -21,13 +21,12 @@ function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
         // Aktualisiere den Wert in der Custom-Tabelle
         global $wpdb;
         $table = $wpdb->prefix . 'custom_order_data';
-        // Wir verwenden REPLACE, um beide Werte gleichzeitig zu speichern
         $wpdb->replace(
             $table,
             [
-                'order_id'    => $order_id,
+                'order_id'      => $order_id,
                 'customer_type' => $customer_type,
-                'tax_class'   => $tax_class,
+                'tax_class'     => $tax_class,
             ],
             [
                 '%d',
@@ -73,7 +72,7 @@ function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
         }
         
         if ( $surcharge_percentage > 0 ) {
-            // Basis: Verwende das Subtotal der Bestellung (ohne Steuern, Rabatte etc.)
+            // Hier verwenden wir das Subtotal der Bestellung (ohne Steuern, Rabatte etc.)
             $order_subtotal = $order->get_subtotal();
             $surcharge_amount = $order_subtotal * $surcharge_percentage;
             if ( $surcharge_amount > 0 ) {
@@ -81,7 +80,6 @@ function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
                 $fee->set_name( 'Kundenart-Zuschlag' );
                 $fee->set_total( $surcharge_amount );
                 $fee->set_tax_status( 'taxable' ); // Falls Steuern berechnet werden sollen
-                // Setze die Steuerklasse für den Zuschlag
                 if ( method_exists( $fee, 'set_tax_class' ) ) {
                     $fee->set_tax_class( $tax_class );
                 }
@@ -90,19 +88,11 @@ function cth_update_order_customer_type_and_tax_class( $order_id, $post ) {
             }
         }
         
-        // Aktualisiere die Steuerklasse für alle Bestellpositionen (Produkte)
+        // Aktualisiere die Steuerklasse für alle Bestellpositionen (Produkte und Fees)
         foreach ( $order->get_items() as $item_id => $item ) {
-            // Für Produktpositionen
-            if ( 'line_item' === $item->get_type() ) {
+            if ( method_exists( $item, 'set_tax_class' ) ) {
                 $item->set_tax_class( $tax_class );
                 $item->save();
-            }
-            // Für Fee-Positionen, falls nicht bereits über die Kundenart-Zuschlag-Funktion gesetzt
-            if ( 'fee' === $item->get_type() && $item->get_name() !== 'Kundenart-Zuschlag' ) {
-                if ( method_exists( $item, 'set_tax_class' ) ) {
-                    $item->set_tax_class( $tax_class );
-                    $item->save();
-                }
             }
         }
         

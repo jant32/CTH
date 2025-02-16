@@ -23,7 +23,6 @@ function cth_display_tax_class_field( $order ) {
     }
     
     // Hole die in WooCommerce definierten Steuerklassen:
-    // WC_Tax::get_tax_classes() liefert ein Array zusätzlicher Steuerklassen (ohne "Standard")
     $additional_tax_classes = WC_Tax::get_tax_classes();
     // Füge die Standardsteuerklasse manuell hinzu (da sie nicht in get_tax_classes() enthalten ist)
     $tax_classes = array( 'standard' => __('Standard', 'woocommerce') );
@@ -38,16 +37,15 @@ function cth_display_tax_class_field( $order ) {
         <select name="tax_class" id="tax_class" class="wc-enhanced-select" style="width: 100%;">
             <?php 
             foreach ( $tax_classes as $slug => $class_label ) :
-                // Hole die Steuer-Raten für diese Steuerklasse
-                $rates = WC_Tax::get_rates_for_tax_class( $slug );
+                // Für die Standardsteuerklasse: WooCommerce speichert "standard" als leeren String intern.
+                $lookup = ($slug === 'standard') ? '' : $slug;
+                $rates = WC_Tax::get_rates_for_tax_class( $lookup );
+                $rate_percent = 0;
                 if ( ! empty( $rates ) ) {
-                    // Nimm den ersten Rateeintrag (bei einfachen Konfigurationen gibt es in der Regel nur einen Eintrag)
                     $rate_data = current( $rates );
                     $rate_percent = floatval( $rate_data['tax_rate'] );
-                    $display_rate = number_format( $rate_percent, 2 ) . '%';
-                } else {
-                    $display_rate = '0%';
                 }
+                $display_rate = number_format( $rate_percent, 2 ) . '%';
             ?>
                 <option value="<?php echo esc_attr( $slug ); ?>" <?php selected( $tax_class, $slug ); ?>>
                     <?php echo esc_html( $display_rate ); ?>

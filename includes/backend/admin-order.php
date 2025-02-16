@@ -5,6 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once plugin_dir_path( __FILE__ ) . '../helpers/helpers.php';
 
+// Kundenart-Dropdown in der Bestell-Detailansicht
 add_action( 'woocommerce_admin_order_data_after_order_details', function( $order ) {
     global $wpdb;
     $order_id = $order->get_id();
@@ -28,15 +29,12 @@ add_action( 'woocommerce_admin_order_data_after_order_details', function( $order
     </p>
     <script type="text/javascript">
     jQuery(document).ready(function($) {
-        // Zerstöre Select2-Initialisierung (falls vorhanden) und entferne alle Event-Handler vom Dropdown
+        // Zerstöre die Select2-Initialisierung und entferne alle Event-Handler vom Kundenart-Dropdown
         var $dropdown = $('#customer_type');
         if ($dropdown.data('select2')) {
             $dropdown.select2('destroy');
         }
-        $dropdown.off(); // Entfernt alle gebundenen Events
-        
-        // Optional: Falls du andere Event-Handler hinzufügen möchtest, kannst du das hier tun.
-        // Andernfalls bleibt das Dropdown als normales Feld ohne AJAX.
+        $dropdown.off();
     });
     </script>
     <?php
