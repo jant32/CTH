@@ -18,7 +18,6 @@ add_action( 'woocommerce_admin_order_data_after_order_details', function( $order
     if ( ! $customer_type ) {
         $customer_type = 'none';
     }
-    $customer_types = get_all_customer_types();
     ?>
     <p class="form-field form-field-wide">
         <label for="customer_type"><?php esc_html_e( 'Kundenart:', 'woocommerce' ); ?></label>
@@ -31,34 +30,42 @@ add_action( 'woocommerce_admin_order_data_after_order_details', function( $order
         </select>
     </p>
     <script type="text/javascript">
-    /**
-     * Diese Funktion wird vom inline onchange-Attribut aufgerufen.
-     * Sie sendet per AJAX den neuen Kundenart-Wert (und im Admin ggf. die Order-ID)
-     * an unseren AJAX-Handler (Action "update_surcharge").
-     */
-    function updateCustomerTypeAJAX(orderId) {
-        var customerType = document.getElementById('customer_type').value;
-        jQuery.ajax({
-            type: 'POST',
-            url: ajaxurl, // ajaxurl ist im Admin global verfügbar
-            data: {
-                action: 'update_surcharge',
-                order_id: orderId,
-                customer_type: customerType
-            },
-            success: function(response) {
-                if (response.success) {
-                    // Bei Erfolg Seite neu laden, um die Änderungen zu übernehmen
-                    location.reload();
-                } else {
-                    alert('Fehler: ' + (response.data && response.data.message ? response.data.message : 'Unbekannter Fehler'));
+    jQuery(document).ready(function($) {
+        // Debug: Log, dass unser Script geladen ist
+        console.log("admin-order inline script loaded");
+
+        // Entferne das inline onchange-Attribut (falls vorhanden), damit unser Binding greift
+        $('#customer_type').removeAttr('onchange');
+
+        // Binde das Change-Event an das Dropdown
+        $('#customer_type').on('change', function() {
+            var orderId = $('#post_ID').val() || null; // Order-ID, falls im Admin vorhanden
+            var customerType = $(this).val();
+            console.log("Dropdown changed: customerType =", customerType, "orderId =", orderId);
+
+            jQuery.ajax({
+                type: 'POST',
+                url: ajaxurl, // Im Admin ist ajaxurl global verfügbar
+                data: {
+                    action: 'update_surcharge',
+                    order_id: orderId,
+                    customer_type: customerType
+                },
+                success: function(response) {
+                    console.log("AJAX response:", response);
+                    if ( response.success ) {
+                        location.reload();
+                    } else {
+                        alert('Fehler: ' + ( response.data && response.data.message ? response.data.message : 'Unbekannter Fehler' ));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("AJAX error:", xhr.responseText, status, error);
+                    alert('AJAX-Fehler: ' + error);
                 }
-            },
-            error: function(xhr, status, error) {
-                alert('AJAX-Fehler: ' + error);
-            }
+            });
         });
-    }
+    });
     </script>
     <?php
 });
