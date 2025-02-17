@@ -7,15 +7,20 @@
  * Die Daten werden in der Datenbanktabelle wp_custom_tax_surcharge_handler abgelegt.
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
+// Sicherstellen, dass wir im Adminbereich sind und die nötigen Funktionen geladen wurden
+if ( ! is_admin() ) {
+    return;
 }
+
+if ( ! function_exists( 'wp_nonce_field' ) ) {
+    return;
+}
+
+global $wpdb;
+$table   = $wpdb->prefix . 'custom_tax_surcharge_handler';
 
 // Speichern der Einstellungen
 if ( isset( $_POST['cth_settings_nonce'] ) && wp_verify_nonce( $_POST['cth_settings_nonce'], 'cth_save_settings' ) ) {
-    global $wpdb;
-    $table = $wpdb->prefix . 'custom_tax_surcharge_handler';
-    
     // Als Beispiel: Tabelle leeren und neue Einträge speichern
     $wpdb->query( "TRUNCATE TABLE $table" );
     
@@ -40,8 +45,6 @@ if ( isset( $_POST['cth_settings_nonce'] ) && wp_verify_nonce( $_POST['cth_setti
     echo '<div class="updated"><p>' . __( 'Einstellungen gespeichert.', 'cth' ) . '</p></div>';
 }
 
-global $wpdb;
-$table   = $wpdb->prefix . 'custom_tax_surcharge_handler';
 $entries = $wpdb->get_results( "SELECT * FROM $table" );
 ?>
 
