@@ -1,44 +1,65 @@
 <?php
 /**
- * Plugin Name: Custom Tax Handler by PixelTeich
+ * Plugin Name: Custom Tax and Surcharge Handler by PixelTeich
  * Plugin URI: https://pixelteich.de
  * Description: Passt die Mehrwertsteuer und Zuschläge basierend auf der Kundenart und Steuerklasse an.
- * Version: 4.0.2
+ * Version: 5.0.0
  * Author: Jan Teichmann
  * Author URI: https://pixelteich.de
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
-
-// Plugin-Pfade definieren – vor Verwendung in Enqueues und require_once!
-define('CTH_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('CTH_PLUGIN_URL', plugin_dir_url(__FILE__));
-
-/** Enqueue Scripts & Styles im Admin-Bereich **/
-add_action('admin_enqueue_scripts', function($hook) {
-    // Laden nur auf Seiten, wo Bestellungen bearbeitet werden (post.php, post-new.php)
-    if ( 'post.php' === $hook || 'post-new.php' === $hook ) {
-        wp_enqueue_script('cth-admin-js', CTH_PLUGIN_URL . 'assets/js/cth-admin.js', ['jquery'], '3.0.0', true );
-        wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
-    }
-    // Admin CSS auf allen Admin-Seiten laden
-    wp_enqueue_style('cth-admin-css', CTH_PLUGIN_URL . 'assets/css/admin.css');
-});
-
-/** Modul-Dateien einbinden **/
-require_once CTH_PLUGIN_DIR . 'includes/backend/admin-menu.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/session-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/checkout/checkout-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/order-meta-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/tax-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/surcharge-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/checkout/display-customer-type-checkout.php';
-require_once CTH_PLUGIN_DIR . 'includes/backend/tax-surcharge-settings.php'; // Neue Admin-Seite
-require_once CTH_PLUGIN_DIR . 'includes/helpers/db-init.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/save-customer-type.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/helpers.php';
-// Alte AJAX-Dateien können entfernt werden:
-// require_once CTH_PLUGIN_DIR . 'includes/helpers/ajax-handler.php';
-// require_once CTH_PLUGIN_DIR . 'assets/js/admin-surcharge.js';
+ if ( ! defined( 'ABSPATH' ) ) {
+     exit; // Exit if accessed directly.
+ }
+ 
+ define( 'CTH_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+ 
+ // Einbinden der benötigten Dateien aus der neuen Ordnerstruktur.
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/db-init.php';
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/session-handler.php';
+ require_once CTH_PLUGIN_DIR . 'includes/backend/admin-menu.php';
+ require_once CTH_PLUGIN_DIR . 'includes/backend/admin-order.php';
+ require_once CTH_PLUGIN_DIR . 'includes/backend/tax-surcharge-settings.php';
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/helpers.php';
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/ajax-handler.php';
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/order-meta-handler.php';
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/save-customer-type.php';
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/surcharge-handler.php';
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/tax-class-handler.php';
+ require_once CTH_PLUGIN_DIR . 'includes/checkout/tax-handler.php';
+ 
+ // Plugin-Aktivierung: Initialisiert die benötigten Datenbanktabellen.
+ register_activation_hook( __FILE__, 'cth_init_db_tables' );
+ 
+ // Haken, um den Zuschlag beim Neuberechnen des Warenkorbs anzuwenden.
+ add_action( 'woocommerce_cart_calculate_fees', 'cth_apply_customer_surcharge' );
+ 
+ // Haken, um die Order-Metadaten (Kundenart und Steuerklasse) zu aktualisieren, wenn eine Bestellung gespeichert wird.
+ add_action( 'save_post_shop_order', 'cth_update_order_meta', 20, 3 );
+ 
+ // Enqueue Admin-Skripte und Styles.
+ function cth_enqueue_admin_assets( $hook ) {
+     if ( strpos( $hook, 'cth_tax_surcharge_settings' ) !== false || strpos( $hook, 'shop_order' ) !== false ) {
+         wp_enqueue_style( 'cth-admin-css', plugins_url( 'assets/css/admin.css', __FILE__ ) );
+         wp_enqueue_script( 'cth-admin-js', plugins_url( 'assets/js/cth-admin.js', __FILE__ ), array( 'jquery' ), '1.0', true );
+     }
+ }
+ add_action( 'admin_enqueue_scripts', 'cth_enqueue_admin_assets' );
+ 
+ // Enqueue Frontend-Skripte (z. B. für AJAX in der Kasse).
+ function cth_enqueue_frontend_assets() {
+     if ( is_checkout() ) {
+         wp_enqueue_script( 'cth-ajax-js', plugins_url( 'assets/js/cth-admin.js', __FILE__ ), array( 'jquery' ), '1.0', true );
+         wp_localize_script( 'cth-ajax-js', 'cth_ajax_obj', array(
+             'ajax_url' => admin_url( 'admin-ajax.php' ),
+             'nonce'    => wp_create_nonce( 'cth_ajax_nonce' ),
+         ) );
+     }
+ }
+ add_action( 'wp_enqueue_scripts', 'cth_enqueue_frontend_assets' );
+ 
+ // Frontend: Anzeige der Kundenart-Radio-Buttons auf der Kasse.
+ add_action( 'woocommerce_review_order_before_payment', 'cth_display_checkout_customer_type_options' );
+ 
+ // Danke-Seite: Darstellung der ausgewählten Kundenart.
+ add_action( 'woocommerce_thankyou', 'cth_display_customer_type_thank_you', 20 );

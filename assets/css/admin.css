@@ -1,13 +1,23 @@
-.woocommerce #customer_type {
-    width: 100% !important;
-    max-width: 100% !important;
+/* admin.css */
+/*
+ * Custom Tax & Surcharge Handler – Admin Styles
+ * Enthält grafische Anpassungen für die Admin-Seiten des Plugins.
+ */
+
+/* Beispielhafte Basis-Stile für die Einstellungenstabelle */
+.cth-settings-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
 }
 
-.surcharge-value {
-    text-align: right;
+.cth-settings-table th,
+.cth-settings-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
 }
 
-.unit {
-    position: relative !important;
-    right: 0 !important;
+.cth-settings-table th {
+    background-color: #f7f7f7;
+    text-align: left;
 }
