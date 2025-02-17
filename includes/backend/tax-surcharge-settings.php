@@ -75,7 +75,8 @@ function cth_tax_surcharge_settings_page() {
                                 $rates = WC_Tax::get_rates( $tax_class );
                                 if ( !empty($rates) ) {
                                     $first_rate = reset($rates);
-                                    $rate_percent = floatval( $first_rate['tax_rate'] );
+                                    // Umrechnung von Dezimal in Prozent: z.B. 0.19 -> 19%
+                                    $rate_percent = floatval( $first_rate['tax_rate'] ) * 100;
                                     $display_text = $rate_percent . '%';
                                 } else {
                                     $display_text = '0%';
