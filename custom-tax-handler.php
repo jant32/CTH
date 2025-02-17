@@ -8,7 +8,7 @@
  * Author URI: https://pixelteich.de
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
+ if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly.
 }
 
@@ -59,7 +59,8 @@ function cth_enqueue_frontend_assets() {
 add_action( 'wp_enqueue_scripts', 'cth_enqueue_frontend_assets' );
 
 // Frontend: Anzeige der Kundenart-Radio-Buttons oberhalb der Warenkorbzusammenfassung.
-add_action( 'woocommerce_checkout_before_order_review', 'cth_display_checkout_customer_type_options' );
+// (Falls Deine Theme-Variante den Hook 'woocommerce_checkout_before_order_review_heading' nicht verwendet, probiere alternativ 'woocommerce_checkout_before_order_review'.)
+add_action( 'woocommerce_checkout_before_order_review_heading', 'cth_display_checkout_customer_type_options' );
 
 // Danke-Seite: Darstellung der ausgewählten Kundenart.
 add_action( 'woocommerce_thankyou', 'cth_display_customer_type_thank_you', 20 );
