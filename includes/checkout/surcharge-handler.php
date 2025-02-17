@@ -41,7 +41,8 @@ function cth_apply_customer_surcharge( $cart ) {
     }
 
     // Zuschlag als Fee hinzufügen.
+    // Hier verwenden wir die Steuerklasse, die in der Tabelle wp_custom_tax_surcharge_handler hinterlegt ist.
     if ( $surcharge > 0 ) {
-        $cart->add_fee( $fee_label, $surcharge, true, '' );
+        $cart->add_fee( $fee_label, $surcharge, true, $option->tax_class );
     }
 }
