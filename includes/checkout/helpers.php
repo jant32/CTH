@@ -5,10 +5,13 @@
  * Diese Datei enthält Hilfsfunktionen, die im Plugin verwendet werden.
  *
  * Funktionen:
- * - cth_format_surcharge_display(): Formatiert den Anzeigenamen einer Kundenart, inkl. Zuschlagshöhe (z. B. "Name | 25%" oder "Name | +25,00€").
+ * - cth_format_surcharge_display(): Formatiert den Anzeigenamen einer Kundenart, inkl. Zuschlagshöhe 
+ *   (z. B. "Name | 25%" oder "Name | +25,00€").
  * - cth_get_customer_type_options(): Ruft alle Kundenart-Optionen aus der Datenbank ab.
- * - cth_display_checkout_customer_type_options(): Gibt auf der Kasse-Seite die Radio-Buttons zur Auswahl der Kundenart aus, inklusive einer h5-Überschrift.
- * - cth_display_customer_type_thank_you(): Zeigt auf der "Danke"-Seite bzw. im Bestelldetails-Bereich unter den Kundendaten die ausgewählte Kundenart an.
+ * - cth_display_checkout_customer_type_options(): Gibt auf der Kasse-Seite die Radio-Buttons zur 
+ *   Auswahl der Kundenart aus, inklusive einer h5-Überschrift.
+ * - cth_display_customer_type_thank_you(): Zeigt im Bestelldetails-Bereich unter den Kundendaten 
+ *   (z. B. E-Mail, Telefon) die ausgewählte Kundenart an.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -56,13 +59,31 @@ function cth_display_checkout_customer_type_options() {
 
 function cth_display_customer_type_thank_you( $order_id ) {
     // Zunächst den Kundenart-Wert aus den Bestellmetadaten abfragen
-    $customer_type_id = get_post_meta( $order_id, '_cth_customer_type', true );
+    $meta = get_post_meta( $order_id, '_cth_customer_type', true );
+    // Falls der Rückgabewert ein Objekt ist, versuche ihn in einen String umzuwandeln
+    if ( is_object( $meta ) && method_exists( $meta, '__toString' ) ) {
+        $meta = $meta->__toString();
+    } elseif ( is_object( $meta ) ) {
+        // Falls keine __toString-Methode vorhanden ist, konvertiere in Array und nimm den ersten Wert
+        $meta = ( is_array( $meta ) ) ? reset( $meta ) : '';
+    } elseif ( is_array( $meta ) ) {
+        $meta = reset( $meta );
+    }
+    $customer_type_id = intval( $meta );
     
     // Falls nichts gefunden wird, versuche in der custom_order_data Tabelle
     if ( empty( $customer_type_id ) ) {
         global $wpdb;
         $order_table = $wpdb->prefix . 'custom_order_data';
-        $customer_type_id = $wpdb->get_var( $wpdb->prepare( "SELECT customer_type FROM $order_table WHERE order_id = %d", $order_id ) );
+        $meta_from_db = $wpdb->get_var( $wpdb->prepare( "SELECT customer_type FROM $order_table WHERE order_id = %d", $order_id ) );
+        if ( is_object( $meta_from_db ) && method_exists( $meta_from_db, '__toString' ) ) {
+            $meta_from_db = $meta_from_db->__toString();
+        } elseif ( is_object( $meta_from_db ) ) {
+            $meta_from_db = ( is_array( $meta_from_db ) ) ? reset( $meta_from_db ) : '';
+        } elseif ( is_array( $meta_from_db ) ) {
+            $meta_from_db = reset( $meta_from_db );
+        }
+        $customer_type_id = intval( $meta_from_db );
     }
     
     if ( $customer_type_id ) {
@@ -75,5 +96,4 @@ function cth_display_customer_type_thank_you( $order_id ) {
     }
 }
 
-// Hook hinzufügen, damit die Kundenart unter den Kundendaten (z. B. Email, Telefon) im Bestelldetails-Bereich angezeigt wird
 add_action( 'woocommerce_order_details_after_customer_details', 'cth_display_customer_type_thank_you' );
