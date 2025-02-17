@@ -19,15 +19,26 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-function cth_update_order_meta( $order_id ) {
-    // Kundenart und Steuerklasse aus den Order-Metadaten abfragen.
+function cth_update_order_meta( $order_id, $post, $update ) {
+    // Kundenart und Steuerklasse aus den Bestellmetadaten abfragen.
     $customer_type = get_post_meta( $order_id, '_cth_customer_type', true );
     $tax_class = get_post_meta( $order_id, '_cth_tax_class', true );
     
-    // Falls diese Werte noch nicht gesetzt sind, können sie leer sein – in save-customer-type.php wird
-    // dann ein Fallback durchgeführt (sofern möglich).
+    // Falls diese Werte noch nicht gesetzt sind, nutze den Session-Wert als Fallback.
+    if ( empty( $customer_type ) && isset( $_SESSION['cth_customer_type'] ) ) {
+        $customer_type = $_SESSION['cth_customer_type'];
+    }
+    if ( empty( $tax_class ) && isset( $_SESSION['cth_customer_type'] ) ) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
+        $option = $wpdb->get_row( $wpdb->prepare( "SELECT tax_class FROM $table_name WHERE id = %d", intval( $_SESSION['cth_customer_type'] ) ) );
+        if ( $option ) {
+            $tax_class = $option->tax_class;
+        }
+    }
+    
     if ( function_exists( 'cth_save_customer_type_to_order' ) ) {
         cth_save_customer_type_to_order( $order_id, $customer_type, $tax_class );
     }
 }
-add_action( 'woocommerce_checkout_update_order_meta', 'cth_update_order_meta' );
+add_action( 'woocommerce_checkout_update_order_meta', 'cth_update_order_meta', 10, 3 );
