@@ -5,8 +5,8 @@
  * Diese Datei stellt die Admin-Seite bereit, auf der Administratoren die verschiedenen Kundenarten, Zuschlagstypen (prozentual/fest) sowie den zugehörigen Steuerklassen verwalten können.
  *
  * Funktionen:
- * - cth_tax_surcharge_settings_page(): Rendert die Einstellungsseite inkl. Formular zur Eingabe neuer Einträge und bestehender Einträge.
- * - cth_handle_settings_form_submission(): Verarbeitet die Formularübermittlung und speichert einen neuen Eintrag in die Datenbanktabelle wp_custom_tax_surcharge_handler.
+ * - cth_tax_surcharge_settings_page(): Rendert die Einstellungsseite inkl. Formular zur Eingabe neuer bzw. zum Bearbeiten bestehender Einträge und zur Auflistung der Einträge.
+ * - cth_handle_settings_form_submission(): Verarbeitet die Formularübermittlung und speichert einen neuen Eintrag in die Datenbanktabelle wp_custom_tax_surcharge_handler oder aktualisiert einen bestehenden.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -28,9 +28,18 @@ function cth_tax_surcharge_settings_page() {
         }
     }
 
+    // Prüfen, ob ein Eintrag bearbeitet werden soll.
+    $edit_record = null;
+    if ( isset($_GET['edit']) && !empty($_GET['edit']) ) {
+        $edit_id = intval($_GET['edit']);
+        $edit_record = $wpdb->get_row( $wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $edit_id) );
+    }
+
     // Formularverarbeitung.
     if ( isset( $_POST['cth_settings_submit'] ) && check_admin_referer( 'cth_settings_nonce', 'cth_settings_nonce_field' ) ) {
         cth_handle_settings_form_submission( $table_name );
+        // Nach dem Speichern wird das Bearbeiten beendet.
+        $edit_record = null;
     }
 
     // Vorhandene Einstellungen abrufen.
@@ -40,24 +49,31 @@ function cth_tax_surcharge_settings_page() {
         <h1>Tax & Surcharge Settings</h1>
         <form method="post">
             <?php wp_nonce_field( 'cth_settings_nonce', 'cth_settings_nonce_field' ); ?>
+            <?php if ( $edit_record ) : ?>
+                <h2>Bearbeite bestehende Kundenart</h2>
+            <?php else : ?>
+                <h2>Neue Kundenart hinzufügen</h2>
+            <?php endif; ?>
             <table class="form-table">
                 <tr>
                     <th scope="row"><label for="surcharge_name">Kundenart Name</label></th>
-                    <td><input name="surcharge_name" type="text" id="surcharge_name" value="" class="regular-text cth-input" required></td>
+                    <td>
+                        <input name="surcharge_name" type="text" id="surcharge_name" value="<?php echo $edit_record ? esc_attr( $edit_record->surcharge_name ) : ''; ?>" class="regular-text cth-input" required>
+                    </td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="surcharge_type">Zuschlagstyp</label></th>
                     <td>
                         <select name="surcharge_type" id="surcharge_type" class="cth-input" required>
-                            <option value="percentage">Prozentual</option>
-                            <option value="fixed">Fester Betrag</option>
+                            <option value="percentage" <?php echo ($edit_record && $edit_record->surcharge_type === 'percentage') ? 'selected' : ''; ?>>Prozentual</option>
+                            <option value="fixed" <?php echo ($edit_record && $edit_record->surcharge_type === 'fixed') ? 'selected' : ''; ?>>Fester Betrag</option>
                         </select>
                     </td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="surcharge_value">Zuschlagshöhe</label></th>
                     <td>
-                        <input name="surcharge_value" type="number" step="0.01" id="surcharge_value" value="" class="regular-text cth-input" required style="text-align: right;">
+                        <input name="surcharge_value" type="number" step="0.01" id="surcharge_value" value="<?php echo $edit_record ? esc_attr( $edit_record->surcharge_value ) : ''; ?>" class="regular-text cth-input" required style="text-align: right;">
                         <span id="surcharge_sign"></span>
                     </td>
                 </tr>
@@ -68,27 +84,32 @@ function cth_tax_surcharge_settings_page() {
                             <?php
                             // Abfrage der WooCommerce-Steuerklassen.
                             $tax_classes = WC_Tax::get_tax_classes();
-                            // Standard-Steuerklasse hinzufügen (leerer Wert entspricht Standard).
+                            // Standard-Steuerklasse (leerer String) hinzufügen.
                             $tax_classes = array_merge( array( '' ), $tax_classes );
+                            global $wpdb;
+                            $tax_table = $wpdb->prefix . 'woocommerce_tax_rates';
                             foreach ( $tax_classes as $tax_class ) {
-                                // Hole die Steuerwerte für diese Steuerklasse.
-                                $rates = WC_Tax::get_rates( $tax_class );
-                                if ( !empty($rates) ) {
-                                    $first_rate = reset($rates);
-                                    // Umrechnung von Dezimal in Prozent: z.B. 0.19 -> 19%
-                                    $rate_percent = floatval( $first_rate['tax_rate'] ) * 100;
-                                    $display_text = $rate_percent . '%';
+                                $rate = $wpdb->get_var( $wpdb->prepare("SELECT tax_rate FROM $tax_table WHERE tax_rate_class = %s LIMIT 1", $tax_class) );
+                                if ( $rate !== null ) {
+                                    // tax_rate wird in der DB als z. B. 19.0000 gespeichert – wir wandeln es in 19% um.
+                                    $display_text = floatval( $rate ) . '%';
                                 } else {
                                     $display_text = '0%';
                                 }
-                                echo '<option value="' . esc_attr( $tax_class ) . '">' . esc_html( $display_text ) . '</option>';
+                                $selected = ($edit_record && $edit_record->tax_class === $tax_class) ? 'selected' : '';
+                                echo '<option value="' . esc_attr( $tax_class ) . '" ' . $selected . '>' . esc_html( $display_text ) . '</option>';
                             }
                             ?>
                         </select>
                     </td>
                 </tr>
             </table>
-            <?php submit_button( 'Kundenart hinzufügen', 'primary', 'cth_settings_submit' ); ?>
+            <?php if ( $edit_record ) : ?>
+                <input type="hidden" name="edit_id" value="<?php echo intval( $edit_record->id ); ?>">
+                <?php submit_button( 'Kundenart aktualisieren', 'primary', 'cth_settings_submit' ); ?>
+            <?php else : ?>
+                <?php submit_button( 'Kundenart hinzufügen', 'primary', 'cth_settings_submit' ); ?>
+            <?php endif; ?>
         </form>
         <h2>Bestehende Einstellungen</h2>
         <table class="wp-list-table widefat fixed striped cth-settings-table">
@@ -98,6 +119,7 @@ function cth_tax_surcharge_settings_page() {
                     <th>Zuschlagstyp</th>
                     <th>Zuschlagshöhe</th>
                     <th>Steuerklasse</th>
+                    <th>Bearbeiten</th>
                     <th>Löschen</th>
                 </tr>
             </thead>
@@ -119,6 +141,15 @@ function cth_tax_surcharge_settings_page() {
                             <td><?php echo esc_html( $setting->tax_class ); ?></td>
                             <td>
                                 <?php
+                                $edit_url = add_query_arg( array(
+                                    'page' => 'cth_tax_surcharge_settings',
+                                    'edit' => $setting->id
+                                ), admin_url( 'admin.php' ) );
+                                ?>
+                                <a href="<?php echo esc_url( $edit_url ); ?>">Bearbeiten</a>
+                            </td>
+                            <td>
+                                <?php
                                 $delete_url = add_query_arg( array(
                                     'page'    => 'cth_tax_surcharge_settings',
                                     'delete'  => $setting->id,
@@ -131,7 +162,7 @@ function cth_tax_surcharge_settings_page() {
                     <?php endforeach; ?>
                 <?php else : ?>
                     <tr>
-                        <td colspan="5">Keine Einstellungen gefunden.</td>
+                        <td colspan="6">Keine Einstellungen gefunden.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
@@ -147,15 +178,32 @@ function cth_handle_settings_form_submission( $table_name ) {
     $surcharge_value = floatval( $_POST['surcharge_value'] );
     $tax_class       = sanitize_text_field( $_POST['tax_class'] );
 
-    // Neuen Datensatz einfügen.
-    $wpdb->insert(
-        $table_name,
-        array(
-            'surcharge_name'  => $surcharge_name,
-            'surcharge_type'  => $surcharge_type,
-            'surcharge_value' => $surcharge_value,
-            'tax_class'       => $tax_class,
-        ),
-        array( '%s', '%s', '%f', '%s' )
-    );
+    if ( isset($_POST['edit_id']) && !empty($_POST['edit_id']) ) {
+        $edit_id = intval($_POST['edit_id']);
+        $wpdb->update(
+            $table_name,
+            array(
+                'surcharge_name'  => $surcharge_name,
+                'surcharge_type'  => $surcharge_type,
+                'surcharge_value' => $surcharge_value,
+                'tax_class'       => $tax_class,
+            ),
+            array( 'id' => $edit_id ),
+            array( '%s', '%s', '%f', '%s' ),
+            array( '%d' )
+        );
+        echo '<div class="notice notice-success is-dismissible"><p>Eintrag aktualisiert.</p></div>';
+    } else {
+        $wpdb->insert(
+            $table_name,
+            array(
+                'surcharge_name'  => $surcharge_name,
+                'surcharge_type'  => $surcharge_type,
+                'surcharge_value' => $surcharge_value,
+                'tax_class'       => $tax_class,
+            ),
+            array( '%s', '%s', '%f', '%s' )
+        );
+        echo '<div class="notice notice-success is-dismissible"><p>Eintrag hinzugefügt.</p></div>';
+    }
 }

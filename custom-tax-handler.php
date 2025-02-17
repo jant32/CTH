@@ -3,7 +3,7 @@
  * Plugin Name: Custom Tax and Surcharge Handler by PixelTeich
  * Plugin URI: https://pixelteich.de
  * Description: Passt die Mehrwertsteuer und Zuschläge basierend auf der Kundenart und Steuerklasse an.
- * Version: 5.0.3
+ * Version: 5.0.4
  * Author: Jan Teichmann
  * Author URI: https://pixelteich.de
  */
