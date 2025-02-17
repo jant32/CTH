@@ -3,7 +3,7 @@
  * Plugin Name: Custom Tax and Surcharge Handler by PixelTeich
  * Plugin URI: https://pixelteich.de
  * Description: Passt die Mehrwertsteuer und Zuschläge basierend auf der Kundenart und Steuerklasse an.
- * Version: 5.1.0
+ * Version: 5.1.2
  * Author: Jan Teichmann
  * Author URI: https://pixelteich.de
  */
@@ -58,9 +58,9 @@ function cth_enqueue_frontend_assets() {
 }
 add_action( 'wp_enqueue_scripts', 'cth_enqueue_frontend_assets' );
 
-// Frontend: Anzeige der Kundenart-Radio-Buttons oberhalb der Warenkorbzusammenfassung.
-// (Falls Deine Theme-Variante den Hook 'woocommerce_checkout_before_order_review_heading' nicht verwendet, probiere alternativ 'woocommerce_checkout_before_order_review'.)
-add_action( 'woocommerce_checkout_before_order_review_heading', 'cth_display_checkout_customer_type_options' );
+// Frontend: Anzeige der Kundenart-Radio-Buttons als Teil der Kundeninformationen
+// (Wir verwenden den Hook 'woocommerce_before_checkout_billing_form', sodass die Auswahl über den Kundeninformationen – z. B. über dem Namensfeld – erscheint).
+add_action( 'woocommerce_before_checkout_billing_form', 'cth_display_checkout_customer_type_options', 10 );
 
 // Danke-Seite: Darstellung der ausgewählten Kundenart.
 add_action( 'woocommerce_thankyou', 'cth_display_customer_type_thank_you', 20 );
