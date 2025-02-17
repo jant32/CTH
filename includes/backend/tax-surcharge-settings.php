@@ -80,7 +80,7 @@ function cth_tax_surcharge_settings_page() {
                 <tr>
                     <th scope="row"><label for="tax_class">Steuerklasse</label></th>
                     <td>
-                        <select name="tax_class" id="tax_class" class="cth-input" required>
+                        <select name="tax_class" id="tax_class" class="cth-input">
                             <?php
                             // Abfrage der WooCommerce-Steuerklassen.
                             $tax_classes = WC_Tax::get_tax_classes();
@@ -111,7 +111,7 @@ function cth_tax_surcharge_settings_page() {
                 <?php submit_button( 'Kundenart hinzufügen', 'primary', 'cth_settings_submit' ); ?>
             <?php endif; ?>
         </form>
-        <h2>Bestehende Einstellungen</h2>
+        <h2>Vorhandene Kundenarten</h2>
         <table class="wp-list-table widefat fixed striped cth-settings-table">
             <thead>
                 <tr>
@@ -128,7 +128,15 @@ function cth_tax_surcharge_settings_page() {
                     <?php foreach ( $settings as $setting ) : ?>
                         <tr>
                             <td><?php echo esc_html( $setting->surcharge_name ); ?></td>
-                            <td><?php echo esc_html( ucfirst( $setting->surcharge_type ) ); ?></td>
+                            <td>
+                                <?php 
+                                if ( $setting->surcharge_type == 'percentage' ) {
+                                    echo 'Prozentual';
+                                } elseif ( $setting->surcharge_type == 'fixed' ) {
+                                    echo 'Fester Betrag';
+                                }
+                                ?>
+                            </td>
                             <td>
                                 <?php
                                 if ( $setting->surcharge_type == 'percentage' ) {
@@ -138,7 +146,16 @@ function cth_tax_surcharge_settings_page() {
                                 }
                                 ?>
                             </td>
-                            <td><?php echo esc_html( $setting->tax_class ); ?></td>
+                            <td>
+                                <?php 
+                                $tax_rate = $wpdb->get_var( $wpdb->prepare("SELECT tax_rate FROM $tax_table WHERE tax_rate_class = %s LIMIT 1", $setting->tax_class) );
+                                if ( $tax_rate !== null ) {
+                                    echo floatval( $tax_rate ) . '%';
+                                } else {
+                                    echo '0%';
+                                }
+                                ?>
+                            </td>
                             <td>
                                 <?php
                                 $edit_url = add_query_arg( array(
@@ -176,7 +193,8 @@ function cth_handle_settings_form_submission( $table_name ) {
     $surcharge_name  = sanitize_text_field( $_POST['surcharge_name'] );
     $surcharge_type  = sanitize_text_field( $_POST['surcharge_type'] );
     $surcharge_value = floatval( $_POST['surcharge_value'] );
-    $tax_class       = sanitize_text_field( $_POST['tax_class'] );
+    // Erlaube leere Steuerklasse
+    $tax_class       = isset($_POST['tax_class']) ? sanitize_text_field( $_POST['tax_class'] ) : '';
 
     if ( isset($_POST['edit_id']) && !empty($_POST['edit_id']) ) {
         $edit_id = intval($_POST['edit_id']);
