@@ -22,12 +22,15 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function cth_admin_order_custom_field_display( $order ) {
     $order_id = $order->get_id();
-    // Aktuellen Kundenart-Wert (als Option-ID) aus den Order-Meta-Daten abrufen.
-    $current_customer_type = get_post_meta( $order_id, '_cth_customer_type', true );
     
     global $wpdb;
-    $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
-    $options = $wpdb->get_results( "SELECT * FROM $table_name" );
+    // Lese den aktuell gespeicherten Kundenart-Wert aus der Tabelle wp_custom_order_data.
+    $order_table = $wpdb->prefix . 'custom_order_data';
+    $current_customer_type = $wpdb->get_var( $wpdb->prepare( "SELECT customer_type FROM $order_table WHERE order_id = %d", $order_id ) );
+    
+    // Lade alle Optionen aus der Options-Tabelle
+    $surcharge_table = $wpdb->prefix . 'custom_tax_surcharge_handler';
+    $options = $wpdb->get_results( "SELECT * FROM $surcharge_table" );
     ?>
     <p class="form-field form-field-wide">
         <label for="cth_customer_type"><?php _e( 'Kundenart', 'text-domain' ); ?></label>
@@ -37,7 +40,8 @@ function cth_admin_order_custom_field_display( $order ) {
             if ( $options ) {
                 foreach ( $options as $option ) {
                     $formatted_value = cth_format_surcharge_display( $option );
-                    $selected = ( $current_customer_type == $option->id ) ? 'selected="selected"' : '';
+                    // Vergleiche den in der Option hinterlegten surcharge_name mit dem in wp_custom_order_data gespeicherten Wert
+                    $selected = ( $option->surcharge_name === $current_customer_type ) ? 'selected="selected"' : '';
                     echo '<option value="' . esc_attr( $option->id ) . '" ' . $selected . '>' . esc_html( $formatted_value ) . '</option>';
                 }
             }
@@ -59,3 +63,4 @@ function cth_admin_order_save_custom_field( $post_id ) {
     }
 }
 add_action( 'save_post_shop_order', 'cth_admin_order_save_custom_field' );
+?>
