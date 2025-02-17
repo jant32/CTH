@@ -7,8 +7,7 @@
  * im gleichen Stil wie diese Felder dargestellt.
  *
  * Beim Speichern der Bestellung wird der ausgewählte Wert als Order‑Meta (_cth_customer_type) gespeichert.
- * Über die Order‑Meta‑Handler (in order-meta-handler.php und save-customer-type.php) wird dann zusätzlich in der Tabelle
- * wp_custom_order_data ein Eintrag (oder Update) vorgenommen.
+ * Anschließend wird direkt in der Tabelle wp_custom_order_data der Eintrag (oder das Update) vorgenommen.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -40,7 +39,7 @@ function cth_admin_order_custom_field_display( $order ) {
             if ( $options ) {
                 foreach ( $options as $option ) {
                     $formatted_value = cth_format_surcharge_display( $option );
-                    // Vergleich: Wir vergleichen den in der Option hinterlegten surcharge_name mit dem gespeicherten Wert.
+                    // Vergleiche den in der Option hinterlegten surcharge_name mit dem gespeicherten Wert
                     $selected = ( $option->surcharge_name === $current_customer_type ) ? 'selected="selected"' : '';
                     echo '<option value="' . esc_attr( $option->id ) . '" ' . $selected . '>' . esc_html( $formatted_value ) . '</option>';
                 }
@@ -53,13 +52,27 @@ function cth_admin_order_custom_field_display( $order ) {
 add_action( 'woocommerce_admin_order_data_after_order_details', 'cth_admin_order_custom_field_display' );
 
 /**
- * Speichert den ausgewählten Kundenart-Wert, wenn die Bestellung aktualisiert wird.
+ * Speichert den ausgewählten Kundenart-Wert, wenn die Bestellung im Admin-Bereich aktualisiert wird.
  *
  * @param int $post_id
  */
 function cth_admin_order_save_custom_field( $post_id ) {
     if ( isset( $_POST['cth_customer_type'] ) ) {
-        update_post_meta( $post_id, '_cth_customer_type', sanitize_text_field( $_POST['cth_customer_type'] ) );
+        $customer_type = sanitize_text_field( $_POST['cth_customer_type'] );
+        update_post_meta( $post_id, '_cth_customer_type', $customer_type );
+        
+        // Aktualisiere direkt die Tabelle wp_custom_order_data:
+        global $wpdb;
+        $surcharge_table = $wpdb->prefix . 'custom_tax_surcharge_handler';
+        // Hole den Datensatz zur ausgewählten Option (hierbei verwenden wir die Option-ID)
+        $option = $wpdb->get_row( $wpdb->prepare( "SELECT surcharge_name, tax_class FROM $surcharge_table WHERE id = %d", intval( $customer_type ) ) );
+        if ( $option ) {
+            // customer_type: Der in der Options-Tabelle hinterlegte surcharge_name
+            // tax_class: Der in der Options-Tabelle hinterlegte Tax-Class-Slug
+            if ( function_exists( 'cth_save_customer_type_to_order' ) ) {
+                cth_save_customer_type_to_order( $post_id, $option->surcharge_name, $option->tax_class );
+            }
+        }
     }
 }
 add_action( 'save_post_shop_order', 'cth_admin_order_save_custom_field' );
