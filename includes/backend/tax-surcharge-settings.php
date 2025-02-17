@@ -63,10 +63,31 @@ function cth_tax_surcharge_settings_page() {
                 </tr>
                 <tr>
                     <th scope="row"><label for="tax_class">Steuerklasse</label></th>
-                    <td><input name="tax_class" type="text" id="tax_class" value="" class="regular-text cth-input" required></td>
+                    <td>
+                        <select name="tax_class" id="tax_class" class="cth-input" required>
+                            <?php
+                            // Abfrage der WooCommerce-Steuerklassen.
+                            $tax_classes = WC_Tax::get_tax_classes();
+                            // Standard-Steuerklasse hinzufügen (leerer Wert entspricht Standard).
+                            $tax_classes = array_merge( array( '' ), $tax_classes );
+                            foreach ( $tax_classes as $tax_class ) {
+                                // Hole die Steuerwerte für diese Steuerklasse.
+                                $rates = WC_Tax::get_rates( $tax_class );
+                                if ( !empty($rates) ) {
+                                    $first_rate = reset($rates);
+                                    $rate_percent = floatval( $first_rate['tax_rate'] );
+                                    $display_text = $rate_percent . '%';
+                                } else {
+                                    $display_text = '0%';
+                                }
+                                echo '<option value="' . esc_attr( $tax_class ) . '">' . esc_html( $display_text ) . '</option>';
+                            }
+                            ?>
+                        </select>
+                    </td>
                 </tr>
             </table>
-            <?php submit_button( 'Speichern', 'primary', 'cth_settings_submit' ); ?>
+            <?php submit_button( 'Kundenart hinzufügen', 'primary', 'cth_settings_submit' ); ?>
         </form>
         <h2>Bestehende Einstellungen</h2>
         <table class="wp-list-table widefat fixed striped cth-settings-table">
