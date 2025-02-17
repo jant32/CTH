@@ -13,7 +13,7 @@
  *  - den Zuschlag (Fee) sowie die Steuer neu berechnet und
  *  - die Tax‑Class der Produkte aktualisiert.
  *
- * Wichtig: Wird der Zuschlag prozentual berechnet, erfolgt die Berechnung auf Basis des Nettobetrags.
+ * Wichtig: Wird der Zuschlag prozentual berechnet, erfolgt die Berechnung auf Basis des Nettopreises.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -57,7 +57,9 @@ add_action( 'save_post_shop_order', 'cth_update_order_meta', 20, 3 );
 add_action( 'woocommerce_process_shop_order_meta', 'cth_update_order_meta', 99, 3 );
 
 /**
- * Berechnet den Produkt-Subtotal (Summe aller Line Items) für die Bestellung.
+ * Berechnet den Produkt-Subtotal (Summe aller Line Items) für die Bestellung auf Nettobasis.
+ *
+ * Verwendet wird hier get_subtotal(), da dieser Wert den Nettopreis (ohne Steuern) liefert.
  *
  * @param WC_Order $order
  * @return float
@@ -65,8 +67,7 @@ add_action( 'woocommerce_process_shop_order_meta', 'cth_update_order_meta', 99, 
 function cth_get_order_product_subtotal( $order ) {
     $subtotal = 0;
     foreach ( $order->get_items( 'line_item' ) as $item ) {
-        // Hier gehen wir davon aus, dass get_total() den Bruttobetrag liefert.
-        $subtotal += floatval( $item->get_total() );
+        $subtotal += floatval( $item->get_subtotal() );
     }
     return $subtotal;
 }
@@ -74,17 +75,15 @@ function cth_get_order_product_subtotal( $order ) {
 /**
  * Aktualisiert die Zuschlag-Fee (und die Steuer) sowie die Tax‑Class der Produkte in der Bestellung.
  *
- * Die Berechnung des Zuschlags erfolgt folgendermaßen:
- * - Zuerst wird der Bruttobetrag (Produkt-Subtotal) ermittelt.
- * - Anschließend wird mittels WC_Tax::get_rates() der Steuersatz für die gewählte Tax‑Class abgerufen.
- * - Daraus wird der Nettobetrag berechnet: net = brutto / (1 + tax_rate_decimal)
- * - Für einen prozentualen Zuschlag wird dann surcharge = net * (surcharge_percent/100) berechnet.
- * - Bei einem festen Zuschlag wird einfach der angegebene Wert übernommen.
- *
- * Danach werden alle existierenden Zuschlags-Fee-Items entfernt und ein neues Fee-Item mit dem berechneten
- * Zuschlag (und der entsprechenden Tax‑Class) hinzugefügt.
- *
- * Zum Schluss werden die Bestellwerte (Gesamt, Steuer) neu kalkuliert.
+ * Ablauf:
+ * 1. Ermittlung des Produkt-Subtotals (Brutto in diesem Fall, aber wir leiten daraus den Nettobetrag ab).
+ * 2. Ermittlung des Steuersatzes anhand der gewählten Tax‑Class.
+ * 3. Berechnung des Nettopreises: net = brutto / (1 + tax_rate_decimal)
+ * 4. Berechnung des Zuschlags: Bei prozentualer Berechnung wird surcharge = net * (surcharge_percent/100) berechnet.
+ * 5. Entfernen vorhandener Zuschlags-Fee-Items (die entweder den Marker "[CTH]" oder den surcharge_name enthalten).
+ * 6. Hinzufügen eines neuen Fee-Items mit dem neu berechneten Zuschlag.
+ * 7. Aktualisierung der Tax‑Class aller Produktzeilen.
+ * 8. Neuberechnung der Bestellwerte inklusive Steuern.
  *
  * @param int $order_id
  */
@@ -95,34 +94,41 @@ function cth_recalc_order_fees( $order_id ) {
     }
     
     // Berechne den Produkt-Subtotal (Brutto-Summe aller Line Items vom Typ 'line_item')
-    $product_subtotal_brutto = cth_get_order_product_subtotal( $order );
+    $product_subtotal_brutto = 0;
+    foreach ( $order->get_items( 'line_item' ) as $item ) {
+        // get_total() liefert den Bruttobetrag (inklusive Steuern, falls Preise inkl. Steuer angegeben sind)
+        $product_subtotal_brutto += floatval( $item->get_total() );
+    }
     
-    // Lese den aktuell gewählten Kundenart-Wert (als Option-ID) aus den Order-Meta
+    // Alternativ, falls Preise als Nettopreise gespeichert sind, könntest Du get_subtotal() verwenden:
+    // $product_subtotal_net = cth_get_order_product_subtotal( $order );
+    // In diesem Beispiel gehen wir davon aus, dass get_total() den Bruttobetrag liefert.
+    
+    // Um den Nettowert zu erhalten, benötigen wir den Steuersatz
+    global $wpdb;
+    $table = $wpdb->prefix . 'custom_tax_surcharge_handler';
     $customer_type = get_post_meta( $order_id, '_cth_customer_type', true );
     if ( empty( $customer_type ) ) {
         return;
     }
-    
-    global $wpdb;
-    $table = $wpdb->prefix . 'custom_tax_surcharge_handler';
     $option = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE id = %d", intval( $customer_type ) ) );
     if ( ! $option ) {
         return;
     }
     
-    // Hole den Steuersatz für die gewählte Tax-Class
+    // Erhalte den Steuersatz (z. B. 7%) als Dezimalzahl aus WooCommerce
     $tax_rates = WC_Tax::get_rates( $option->tax_class );
     $first_rate = ! empty( $tax_rates ) ? reset( $tax_rates ) : false;
     $tax_rate_decimal = $first_rate ? floatval( $first_rate['tax_rate'] ) / 100 : 0;
     
-    // Berechne den Nettobetrag der Produkte (wenn tax_rate_decimal > 0)
+    // Berechne den Nettopreis: net = brutto / (1 + tax_rate_decimal)
     if ( $tax_rate_decimal > 0 ) {
         $product_subtotal_net = $product_subtotal_brutto / ( 1 + $tax_rate_decimal );
     } else {
         $product_subtotal_net = $product_subtotal_brutto;
     }
     
-    // Berechne den neuen Zuschlag basierend auf der Zuschlagsart
+    // Berechne den neuen Zuschlag
     if ( $option->surcharge_type === 'percentage' ) {
         $new_surcharge = ( $product_subtotal_net * floatval( $option->surcharge_value ) ) / 100;
     } else {
@@ -136,7 +142,7 @@ function cth_recalc_order_fees( $order_id ) {
         $fee_label = '[CTH] ' . $option->surcharge_name . ' (+' . number_format( $option->surcharge_value, 2 ) . '€)';
     }
     
-    // Entferne vorhandene Fee-Items, deren Name entweder den Marker "[CTH]" oder den surcharge_name enthält
+    // Entferne vorhandene Zuschlags-Fee-Items, die den Marker "[CTH]" oder den surcharge_name enthalten
     foreach ( $order->get_items( 'fee' ) as $item_id => $item ) {
         $fee_name = $item->get_name();
         if ( strpos( $fee_name, '[CTH]' ) !== false || strpos( $fee_name, $option->surcharge_name ) !== false ) {
@@ -144,18 +150,17 @@ function cth_recalc_order_fees( $order_id ) {
         }
     }
     
-    // Füge ein neues Fee-Item hinzu, falls ein Zuschlag berechnet wurde
+    // Füge den neuen Zuschlag als Fee-Item hinzu, falls ein Zuschlag berechnet wurde
     if ( $new_surcharge > 0 ) {
         $fee = new WC_Order_Item_Fee();
         $fee->set_name( $fee_label );
         $fee->set_total( $new_surcharge );
-        // Setze die Tax-Class, damit WooCommerce den Zuschlag korrekt versteuert
         $fee->set_tax_class( $option->tax_class );
         $fee->set_tax_status( 'taxable' );
         $order->add_item( $fee );
     }
     
-    // Aktualisiere die Tax-Class aller Produkt-Positionen in der Bestellung
+    // Aktualisiere die Tax‑Class aller Produkt-Positionen in der Bestellung
     foreach ( $order->get_items( 'line_item' ) as $item ) {
         $item->set_tax_class( $option->tax_class );
         $item->save();
