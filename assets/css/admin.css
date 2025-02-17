@@ -1,0 +1,13 @@
+.woocommerce #customer_type {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+.surcharge-value {
+    text-align: right;
+}
+
+.unit {
+    position: relative !important;
+    right: 0 !important;
+}
