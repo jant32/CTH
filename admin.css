@@ -1,0 +1,16 @@
+/*
+ * admin.css
+ *
+ * Custom Tax Surcharge Handler Admin CSS
+ * Enthält grafische Anpassungen für die Anzeige im Adminbereich, z. B. für die Einstellungs-Tabellen.
+ */
+
+ .cth-admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.cth-admin-table th,
+.cth-admin-table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
