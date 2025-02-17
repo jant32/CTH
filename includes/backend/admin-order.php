@@ -29,23 +29,21 @@ function cth_admin_order_custom_field_display( $order ) {
     $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
     $options = $wpdb->get_results( "SELECT * FROM $table_name" );
     ?>
-    <div class="order_data_column">
-        <h4><?php _e( 'Kundenart', 'text-domain' ); ?></h4>
-        <p class="form-field form-field-wide">
-            <select name="cth_customer_type" id="cth_customer_type" class="wc-enhanced-select">
-                <option value=""><?php _e( 'Wähle eine Kundenart', 'text-domain' ); ?></option>
-                <?php
-                if ( $options ) {
-                    foreach ( $options as $option ) {
-                        $formatted_value = cth_format_surcharge_display( $option );
-                        $selected = ( $current_customer_type == $option->id ) ? 'selected="selected"' : '';
-                        echo '<option value="' . esc_attr( $option->id ) . '" ' . $selected . '>' . esc_html( $formatted_value ) . '</option>';
-                    }
+    <p class="form-field form-field-wide">
+        <label for="cth_customer_type"><?php _e( 'Kundenart', 'text-domain' ); ?></label>
+        <select name="cth_customer_type" id="cth_customer_type" class="wc-enhanced-select">
+            <option value=""><?php _e( 'Wähle eine Kundenart', 'text-domain' ); ?></option>
+            <?php
+            if ( $options ) {
+                foreach ( $options as $option ) {
+                    $formatted_value = cth_format_surcharge_display( $option );
+                    $selected = ( $current_customer_type == $option->id ) ? 'selected="selected"' : '';
+                    echo '<option value="' . esc_attr( $option->id ) . '" ' . $selected . '>' . esc_html( $formatted_value ) . '</option>';
                 }
-                ?>
-            </select>
-        </p>
-    </div>
+            }
+            ?>
+        </select>
+    </p>
     <?php
 }
 add_action( 'woocommerce_admin_order_data_after_order_details', 'cth_admin_order_custom_field_display' );
