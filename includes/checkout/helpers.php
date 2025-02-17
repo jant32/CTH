@@ -55,8 +55,16 @@ function cth_display_checkout_customer_type_options() {
 }
 
 function cth_display_customer_type_thank_you( $order_id ) {
-    // Kundenart aus den Order-Metadaten abrufen.
+    // Zunächst den Kundenart-Wert aus den Bestellmetadaten abfragen
     $customer_type_id = get_post_meta( $order_id, '_cth_customer_type', true );
+    
+    // Falls nichts gefunden wird, versuche in der custom_order_data Tabelle
+    if ( empty( $customer_type_id ) ) {
+        global $wpdb;
+        $order_table = $wpdb->prefix . 'custom_order_data';
+        $customer_type_id = $wpdb->get_var( $wpdb->prepare( "SELECT customer_type FROM $order_table WHERE order_id = %d", $order_id ) );
+    }
+    
     if ( $customer_type_id ) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
