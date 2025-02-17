@@ -28,4 +28,22 @@ jQuery(document).ready(function($) {
             }
         });
     });
+
+    // Admin: Update surcharge sign based on surcharge type selection.
+    function updateSurchargeSign() {
+        var type = $('#surcharge_type').val();
+        if (type === 'percentage') {
+            $('#surcharge_sign').text('%');
+        } else if (type === 'fixed') {
+            $('#surcharge_sign').text('€');
+        } else {
+            $('#surcharge_sign').text('');
+        }
+    }
+    if ($('#surcharge_type').length) {
+        updateSurchargeSign();
+        $('#surcharge_type').on('change', function() {
+            updateSurchargeSign();
+        });
+    }
 });

@@ -21,3 +21,8 @@
     background-color: #f7f7f7;
     text-align: left;
 }
+
+/* Einheitliche Breite für Eingabefelder */
+.cth-input {
+    width: 300px;
+}

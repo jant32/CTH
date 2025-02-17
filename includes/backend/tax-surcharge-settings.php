@@ -5,7 +5,7 @@
  * Diese Datei stellt die Admin-Seite bereit, auf der Administratoren die verschiedenen Kundenarten, Zuschlagstypen (prozentual/fest) sowie den zugehörigen Steuerklassen verwalten können.
  *
  * Funktionen:
- * - cth_tax_surcharge_settings_page(): Rendert die Einstellungsseite inkl. Formular zur Eingabe neuer Einträge.
+ * - cth_tax_surcharge_settings_page(): Rendert die Einstellungsseite inkl. Formular zur Eingabe neuer Einträge und bestehender Einträge.
  * - cth_handle_settings_form_submission(): Verarbeitet die Formularübermittlung und speichert einen neuen Eintrag in die Datenbanktabelle wp_custom_tax_surcharge_handler.
  */
 
@@ -16,6 +16,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 function cth_tax_surcharge_settings_page() {
     global $wpdb;
     $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
+
+    // Handling für Löschvorgänge, wenn ein "delete"-Parameter übergeben wurde.
+    if ( isset($_GET['delete']) && !empty($_GET['delete']) ) {
+        $delete_id = intval($_GET['delete']);
+        if ( isset($_GET['_wpnonce']) && wp_verify_nonce($_GET['_wpnonce'], 'cth_delete_setting_' . $delete_id) ) {
+            $wpdb->delete( $table_name, array( 'id' => $delete_id ), array( '%d' ) );
+            echo '<div class="notice notice-success is-dismissible"><p>Eintrag gelöscht.</p></div>';
+        } else {
+            echo '<div class="notice notice-error is-dismissible"><p>Nonce-Überprüfung fehlgeschlagen.</p></div>';
+        }
+    }
 
     // Formularverarbeitung.
     if ( isset( $_POST['cth_settings_submit'] ) && check_admin_referer( 'cth_settings_nonce', 'cth_settings_nonce_field' ) ) {
@@ -32,12 +43,12 @@ function cth_tax_surcharge_settings_page() {
             <table class="form-table">
                 <tr>
                     <th scope="row"><label for="surcharge_name">Kundenart Name</label></th>
-                    <td><input name="surcharge_name" type="text" id="surcharge_name" value="" class="regular-text" required></td>
+                    <td><input name="surcharge_name" type="text" id="surcharge_name" value="" class="regular-text cth-input" required></td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="surcharge_type">Zuschlagstyp</label></th>
                     <td>
-                        <select name="surcharge_type" id="surcharge_type" required>
+                        <select name="surcharge_type" id="surcharge_type" class="cth-input" required>
                             <option value="percentage">Prozentual</option>
                             <option value="fixed">Fester Betrag</option>
                         </select>
@@ -45,11 +56,14 @@ function cth_tax_surcharge_settings_page() {
                 </tr>
                 <tr>
                     <th scope="row"><label for="surcharge_value">Zuschlagshöhe</label></th>
-                    <td><input name="surcharge_value" type="number" step="0.01" id="surcharge_value" value="" class="regular-text" required></td>
+                    <td>
+                        <input name="surcharge_value" type="number" step="0.01" id="surcharge_value" value="" class="regular-text cth-input" required style="text-align: right;">
+                        <span id="surcharge_sign"></span>
+                    </td>
                 </tr>
                 <tr>
                     <th scope="row"><label for="tax_class">Steuerklasse</label></th>
-                    <td><input name="tax_class" type="text" id="tax_class" value="" class="regular-text" required></td>
+                    <td><input name="tax_class" type="text" id="tax_class" value="" class="regular-text cth-input" required></td>
                 </tr>
             </table>
             <?php submit_button( 'Speichern', 'primary', 'cth_settings_submit' ); ?>
@@ -58,18 +72,17 @@ function cth_tax_surcharge_settings_page() {
         <table class="wp-list-table widefat fixed striped cth-settings-table">
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Kundenart Name</th>
                     <th>Zuschlagstyp</th>
                     <th>Zuschlagshöhe</th>
                     <th>Steuerklasse</th>
+                    <th>Löschen</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if ( $settings ) : ?>
                     <?php foreach ( $settings as $setting ) : ?>
                         <tr>
-                            <td><?php echo esc_html( $setting->id ); ?></td>
                             <td><?php echo esc_html( $setting->surcharge_name ); ?></td>
                             <td><?php echo esc_html( ucfirst( $setting->surcharge_type ) ); ?></td>
                             <td>
@@ -82,6 +95,16 @@ function cth_tax_surcharge_settings_page() {
                                 ?>
                             </td>
                             <td><?php echo esc_html( $setting->tax_class ); ?></td>
+                            <td>
+                                <?php
+                                $delete_url = add_query_arg( array(
+                                    'page'    => 'cth_tax_surcharge_settings',
+                                    'delete'  => $setting->id,
+                                    '_wpnonce'=> wp_create_nonce( 'cth_delete_setting_' . $setting->id )
+                                ), admin_url( 'admin.php' ) );
+                                ?>
+                                <a href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('Eintrag wirklich löschen?');">Löschen</a>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 <?php else : ?>
