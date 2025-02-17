@@ -20,29 +20,29 @@ global $wpdb;
 $table   = $wpdb->prefix . 'custom_tax_surcharge_handler';
 
 // Speichern der Einstellungen
-if ( isset( $_POST['cth_settings_nonce'] ) && wp_verify_nonce( $_POST['cth_settings_nonce'], 'cth_save_settings' ) ) {
-    // Als Beispiel: Tabelle leeren und neue Einträge speichern
-    $wpdb->query( "TRUNCATE TABLE $table" );
-    
-    if ( isset( $_POST['cth_entries'] ) && is_array( $_POST['cth_entries'] ) ) {
-        foreach ( $_POST['cth_entries'] as $entry ) {
-            $surcharge_name  = sanitize_text_field( $entry['surcharge_name'] );
-            $surcharge_type  = in_array( $entry['surcharge_type'], array( 'percent', 'fixed' ) ) ? $entry['surcharge_type'] : 'percent';
-            $surcharge_value = floatval( $entry['surcharge_value'] );
-            $tax_class       = sanitize_text_field( $entry['tax_class'] );
-            $wpdb->insert(
-                $table,
-                array(
-                    'surcharge_name'  => $surcharge_name,
-                    'surcharge_type'  => $surcharge_type,
-                    'surcharge_value' => $surcharge_value,
-                    'tax_class'       => $tax_class,
-                ),
-                array( '%s', '%s', '%f', '%s' )
-            );
+if ( isset( $_POST['cth_entries'] ) && is_array( $_POST['cth_entries'] ) ) {
+    foreach ( $_POST['cth_entries'] as $entry ) {
+        // Überprüfe, ob der Schlüssel 'surcharge_name' existiert und nicht leer ist.
+        if ( empty( $entry['surcharge_name'] ) ) {
+            continue; // Überspringe diese Zeile, wenn kein Name angegeben wurde.
         }
+
+        $surcharge_name  = sanitize_text_field( $entry['surcharge_name'] );
+        $surcharge_type  = ( isset( $entry['surcharge_type'] ) && in_array( $entry['surcharge_type'], array( 'percent', 'fixed' ) ) ) ? $entry['surcharge_type'] : 'percent';
+        $surcharge_value = isset( $entry['surcharge_value'] ) ? floatval( $entry['surcharge_value'] ) : 0;
+        $tax_class       = isset( $entry['tax_class'] ) ? sanitize_text_field( $entry['tax_class'] ) : '';
+
+        $wpdb->insert(
+            $table,
+            array(
+                'surcharge_name'  => $surcharge_name,
+                'surcharge_type'  => $surcharge_type,
+                'surcharge_value' => $surcharge_value,
+                'tax_class'       => $tax_class,
+            ),
+            array( '%s', '%s', '%f', '%s' )
+        );
     }
-    echo '<div class="updated"><p>' . __( 'Einstellungen gespeichert.', 'cth' ) . '</p></div>';
 }
 
 $entries = $wpdb->get_results( "SELECT * FROM $table" );
