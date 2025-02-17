@@ -3,8 +3,12 @@
  * surcharge-handler.php
  *
  * Diese Datei berechnet und wendet den Kundenart-Zuschlag auf den Warenkorb an.
- * Hier wird der Zuschlag als Fee hinzugefügt, und mittels Filter wird auch die Tax‑Class
- * der Produkte im Warenkorb überschrieben.
+ * Der Zuschlag wird auf Basis des Nettowerts der Produkte berechnet – das heißt,
+ * es wird angenommen, dass $cart->cart_contents_total den Nettobetrag liefert.
+ *
+ * Anschließend wird der Zuschlag als steuerpflichtige Fee hinzugefügt, sodass WooCommerce
+ * die Steuer für Produkte und Zuschlag separat berechnet (was in der Summe dem Steuerbetrag
+ * auf den Gesamtwert entspricht).
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -12,57 +16,38 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function cth_apply_customer_surcharge( $cart ) {
+    // Nur im Frontend (oder per AJAX) ausführen
     if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
         return;
     }
-    $customer_type = isset($_SESSION['cth_customer_type']) ? $_SESSION['cth_customer_type'] : (WC()->session ? WC()->session->get('cth_customer_type') : '');
-    if ( empty( $customer_type ) ) {
+    
+    // Prüfe, ob die Kundenart in der Session gesetzt ist
+    if ( empty( $_SESSION['cth_customer_type'] ) ) {
         return;
     }
+    
     global $wpdb;
     $table = $wpdb->prefix . 'custom_tax_surcharge_handler';
-    $option = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE id = %d", intval( $customer_type ) ) );
+    $option = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table WHERE id = %d", intval( $_SESSION['cth_customer_type'] ) ) );
     if ( ! $option ) {
         return;
     }
-    $cart_total = $cart->subtotal;
-    $surcharge = 0;
-    if ( $option->surcharge_type === 'percentage' ) {
-        $surcharge = ( $cart_total * floatval( $option->surcharge_value ) ) / 100;
-        $fee_label = '[CTH] ' . $option->surcharge_name . ' (' . floatval( $option->surcharge_value ) . '%)';
+    
+    // Nehme an, dass cart_contents_total den Nettowert der Produkte liefert
+    $net_total = $cart->cart_contents_total;
+    
+    if ( $option->surcharge_type == 'percentage' ) {
+        $surcharge_percentage = floatval( $option->surcharge_value ) / 100;
+        // Zuschlag auf Basis des Nettowerts berechnen
+        $surcharge_amount = $net_total * $surcharge_percentage;
+        $fee_label = $option->surcharge_name . ' (' . floatval( $option->surcharge_value ) . '%)';
     } else {
-        $surcharge = floatval( $option->surcharge_value );
-        $fee_label = '[CTH] ' . $option->surcharge_name . ' (+' . number_format( $option->surcharge_value, 2 ) . '€)';
+        $surcharge_amount = floatval( $option->surcharge_value );
+        $fee_label = $option->surcharge_name . ' (+' . number_format( $option->surcharge_value, 2 ) . '€)';
     }
     
-    // Entferne vorhandene Zuschlags-Fee-Items
-    foreach ( $cart->get_fees() as $key => $fee ) {
-        $fee_name = $fee->name;
-        if ( strpos( $fee_name, '[CTH]' ) !== false || strpos( $fee_name, $option->surcharge_name ) !== false ) {
-            unset( $cart->fees[ $key ] );
-        }
-    }
-    
-    if ( $surcharge > 0 ) {
-        $cart->add_fee( $fee_label, $surcharge, true, $option->tax_class );
-    }
+    // Füge den Zuschlag als steuerpflichtige Fee hinzu.
+    // Wenn der gleiche Steuersatz wie bei den Produkten angewendet wird, ergibt sich bei separater Berechnung mathematisch das Gleiche.
+    $cart->add_fee( $fee_label, $surcharge_amount, true, $option->tax_class );
 }
 add_action( 'woocommerce_cart_calculate_fees', 'cth_apply_customer_surcharge' );
-
-// Filter, um die Tax‑Class der Produkte im Warenkorb basierend auf der Kundenart zu überschreiben
-add_filter( 'woocommerce_product_get_tax_class', 'cth_override_product_tax_class', 10, 2 );
-function cth_override_product_tax_class( $tax_class, $product ) {
-    if ( ! $product || ! WC()->session ) {
-        return $tax_class;
-    }
-    $customer_type = isset($_SESSION['cth_customer_type']) ? $_SESSION['cth_customer_type'] : WC()->session->get('cth_customer_type');
-    if ( $customer_type ) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'custom_tax_surcharge_handler';
-        $option = $wpdb->get_row( $wpdb->prepare( "SELECT tax_class FROM $table WHERE id = %d", intval( $customer_type ) ) );
-        if ( $option && ! empty( $option->tax_class ) ) {
-            return $option->tax_class;
-        }
-    }
-    return $tax_class;
-}
