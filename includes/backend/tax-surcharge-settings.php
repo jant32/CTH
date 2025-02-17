@@ -2,18 +2,18 @@
 /*
  * tax-surcharge-settings.php
  *
- * Diese Datei stellt die Admin-Seite bereit, auf der Administratoren die verschiedenen Kundenarten,
- * Zuschlagstypen (prozentual/fest) sowie den zugehörigen Steuerklassen verwalten können.
+ * Diese Datei stellt Dir die Admin-Seite bereit, auf der Du verschiedene Kundenarten,
+ * Zuschlagstypen (prozentual/fest) sowie die zugehörigen Steuerklassen verwalten kannst.
  *
- * Auf dieser Seite können Sie:
- * - Neue Kundenarten hinzufügen, indem Sie einen Namen, den Zuschlagstyp (Prozentual oder Fester Betrag),
- *   die Zuschlagshöhe und die zugehörige Steuerklasse (aus den in WooCommerce hinterlegten Steueroptionen)
- *   auswählen.
+ * Auf dieser Seite kannst Du:
+ * - Neue Kundenarten hinzufügen, indem Du einen Namen, den Zuschlagstyp (Prozentual oder Fester Betrag),
+ *   die Zuschlagshöhe und die zugehörige Steuerklasse aus den in WooCommerce hinterlegten Steueroptionen auswählst.
  * - Bestehende Kundenarten bearbeiten oder löschen.
- * - Die Steuerklasse wird als Steuersatz in Prozent angezeigt. Ein leerer Wert entspricht der Standardsteuer.
+ * - Die Steuerklasse wird als Steuersatz in Prozent angezeigt. Ein leerer Eintrag entspricht der Standardsteuer.
  *
  * In der unten stehenden Tabelle werden alle vorhandenen Kundenarten angezeigt.
- * Die Spalten „Bearbeiten“ und „Löschen“ werden durch Icons (Stift und Mülleimer) dargestellt.
+ * In der letzten Spalte findest Du zwei Icons: einen Stift zum Bearbeiten und einen Mülleimer zum Löschen.
+ * Zwischen den Icons ist ein kleiner Abstand.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -55,15 +55,14 @@ function cth_tax_surcharge_settings_page() {
     <div class="wrap">
         <h1>Tax & Surcharge Settings</h1>
         <p>
-            Auf dieser Seite können Sie Kundenarten definieren und verwalten. Fügen Sie neue Kundenarten hinzu, bearbeiten oder löschen Sie bestehende Einträge.
-            Wählen Sie den entsprechenden Zuschlagstyp (Prozentual oder Fester Betrag) und geben Sie die Zuschlagshöhe an.
-            Zudem können Sie die zugehörige Steuerklasse aus den in WooCommerce hinterlegten Steueroptionen auswählen.
-            Die Steuerklasse wird als Steuersatz in Prozent angezeigt. Ein leerer Eintrag entspricht der Standardsteuer.
+            Auf dieser Seite kannst Du Kundenarten definieren und verwalten. Füge neue Kundenarten hinzu, bearbeite oder lösche bestehende Einträge.
+            Wähle dazu den Zuschlagstyp (Prozentual oder Fester Betrag) und gib die Zuschlagshöhe an. Außerdem kannst Du die zugehörige Steuerklasse
+            aus den in WooCommerce hinterlegten Steueroptionen auswählen. Die Steuerklasse wird als Steuersatz in Prozent angezeigt – ein leerer Eintrag entspricht der Standardsteuer.
         </p>
         <form method="post">
             <?php wp_nonce_field( 'cth_settings_nonce', 'cth_settings_nonce_field' ); ?>
             <?php if ( $edit_record ) : ?>
-                <h2>Bearbeite bestehende Kundenart</h2>
+                <h2>Bearbeite Deine bestehende Kundenart</h2>
             <?php else : ?>
                 <h2>Neue Kundenart hinzufügen</h2>
             <?php endif; ?>
@@ -132,8 +131,7 @@ function cth_tax_surcharge_settings_page() {
                     <th>Zuschlagstyp</th>
                     <th>Zuschlagshöhe</th>
                     <th>Steuerklasse</th>
-                    <th style="width: 40px;"></th>
-                    <th style="width: 40px;"></th>
+                    <th style="width: 80px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -169,26 +167,23 @@ function cth_tax_surcharge_settings_page() {
                                 }
                                 ?>
                             </td>
-                            <td>
+                            <td style="text-align: center;">
                                 <?php
                                 $edit_url = add_query_arg( array(
                                     'page' => 'cth_tax_surcharge_settings',
                                     'edit' => $setting->id
                                 ), admin_url( 'admin.php' ) );
-                                ?>
-                                <a href="<?php echo esc_url( $edit_url ); ?>">
-                                    <span class="dashicons dashicons-edit"></span>
-                                </a>
-                            </td>
-                            <td>
-                                <?php
                                 $delete_url = add_query_arg( array(
                                     'page'    => 'cth_tax_surcharge_settings',
                                     'delete'  => $setting->id,
                                     '_wpnonce'=> wp_create_nonce( 'cth_delete_setting_' . $setting->id )
                                 ), admin_url( 'admin.php' ) );
                                 ?>
-                                <a href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('Eintrag wirklich löschen?');">
+                                <a href="<?php echo esc_url( $edit_url ); ?>" title="Bearbeiten">
+                                    <span class="dashicons dashicons-edit"></span>
+                                </a>
+                                <span style="margin: 0 4px;"></span>
+                                <a href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('Eintrag wirklich löschen?');" title="Löschen">
                                     <span class="dashicons dashicons-trash"></span>
                                 </a>
                             </td>
@@ -196,7 +191,7 @@ function cth_tax_surcharge_settings_page() {
                     <?php endforeach; ?>
                 <?php else : ?>
                     <tr>
-                        <td colspan="6">Keine Einstellungen gefunden.</td>
+                        <td colspan="5">Keine Einstellungen gefunden.</td>
                     </tr>
                 <?php endif; ?>
             </tbody>
