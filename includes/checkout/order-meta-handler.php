@@ -30,12 +30,12 @@ function cth_update_order_meta( $order_id, $post = false, $update = false ) {
     $customer_type = get_post_meta( $order_id, '_cth_customer_type', true );
     $tax_class = get_post_meta( $order_id, '_cth_tax_class', true );
     
-    // Im Admin-Bereich keine Session-Fallbacks verwenden.
+    // Im Admin-Bereich werden keine Session-Fallbacks genutzt.
     if ( function_exists( 'cth_save_customer_type_to_order' ) ) {
         cth_save_customer_type_to_order( $order_id, $customer_type, $tax_class );
     }
     
-    // Neuberechnung des Zuschlags und der Steuer
+    // Neuberechnung des Zuschlags und der Steuerwerte
     cth_recalc_order_fees( $order_id );
 }
 add_action( 'woocommerce_checkout_update_order_meta', 'cth_update_order_meta', 10, 3 );
@@ -83,9 +83,10 @@ function cth_recalc_order_fees( $order_id ) {
     }
     
     // Aktualisiere die Tax-Class aller Produkt-Positionen in der Bestellung
-    foreach ( $order->get_items( 'line_item' ) as $item_id => $item ) {
+    foreach ( $order->get_items( 'line_item' ) as $item ) {
         $item->set_tax_class( $option->tax_class );
-        $order->update_item( $item );
+        // Statt update_item() rufen wir jetzt save() auf, um die Änderung zu persistieren.
+        $item->save();
     }
     
     // Berechne den neuen Zuschlag
@@ -96,7 +97,7 @@ function cth_recalc_order_fees( $order_id ) {
         $new_surcharge = floatval( $option->surcharge_value );
     }
     
-    // Bestimme den neuen Fee-Namen (wir fügen den Marker [CTH] hinzu)
+    // Definiere den neuen Fee-Namen mit Marker [CTH]
     if ( $option->surcharge_type === 'percentage' ) {
         $fee_label = '[CTH] ' . $option->surcharge_name . ' (' . floatval( $option->surcharge_value ) . '%)';
     } else {
