@@ -2,11 +2,18 @@
 /*
  * tax-surcharge-settings.php
  *
- * Diese Datei stellt die Admin-Seite bereit, auf der Administratoren die verschiedenen Kundenarten, Zuschlagstypen (prozentual/fest) sowie den zugehörigen Steuerklassen verwalten können.
+ * Diese Datei stellt die Admin-Seite bereit, auf der Administratoren die verschiedenen Kundenarten,
+ * Zuschlagstypen (prozentual/fest) sowie den zugehörigen Steuerklassen verwalten können.
  *
- * Funktionen:
- * - cth_tax_surcharge_settings_page(): Rendert die Einstellungsseite inkl. Formular zur Eingabe neuer bzw. zum Bearbeiten bestehender Einträge und zur Auflistung der Einträge.
- * - cth_handle_settings_form_submission(): Verarbeitet die Formularübermittlung und speichert einen neuen Eintrag in die Datenbanktabelle wp_custom_tax_surcharge_handler oder aktualisiert einen bestehenden.
+ * Auf dieser Seite können Sie:
+ * - Neue Kundenarten hinzufügen, indem Sie einen Namen, den Zuschlagstyp (Prozentual oder Fester Betrag),
+ *   die Zuschlagshöhe und die zugehörige Steuerklasse (aus den in WooCommerce hinterlegten Steueroptionen)
+ *   auswählen.
+ * - Bestehende Kundenarten bearbeiten oder löschen.
+ * - Die Steuerklasse wird als Steuersatz in Prozent angezeigt. Ein leerer Wert entspricht der Standardsteuer.
+ *
+ * In der unten stehenden Tabelle werden alle vorhandenen Kundenarten angezeigt.
+ * Die Spalten „Bearbeiten“ und „Löschen“ werden durch Icons (Stift und Mülleimer) dargestellt.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -47,6 +54,12 @@ function cth_tax_surcharge_settings_page() {
     ?>
     <div class="wrap">
         <h1>Tax & Surcharge Settings</h1>
+        <p>
+            Auf dieser Seite können Sie Kundenarten definieren und verwalten. Fügen Sie neue Kundenarten hinzu, bearbeiten oder löschen Sie bestehende Einträge.
+            Wählen Sie den entsprechenden Zuschlagstyp (Prozentual oder Fester Betrag) und geben Sie die Zuschlagshöhe an.
+            Zudem können Sie die zugehörige Steuerklasse aus den in WooCommerce hinterlegten Steueroptionen auswählen.
+            Die Steuerklasse wird als Steuersatz in Prozent angezeigt. Ein leerer Eintrag entspricht der Standardsteuer.
+        </p>
         <form method="post">
             <?php wp_nonce_field( 'cth_settings_nonce', 'cth_settings_nonce_field' ); ?>
             <?php if ( $edit_record ) : ?>
@@ -119,8 +132,8 @@ function cth_tax_surcharge_settings_page() {
                     <th>Zuschlagstyp</th>
                     <th>Zuschlagshöhe</th>
                     <th>Steuerklasse</th>
-                    <th>Bearbeiten</th>
-                    <th>Löschen</th>
+                    <th style="width: 40px;"></th>
+                    <th style="width: 40px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -163,7 +176,9 @@ function cth_tax_surcharge_settings_page() {
                                     'edit' => $setting->id
                                 ), admin_url( 'admin.php' ) );
                                 ?>
-                                <a href="<?php echo esc_url( $edit_url ); ?>">Bearbeiten</a>
+                                <a href="<?php echo esc_url( $edit_url ); ?>">
+                                    <span class="dashicons dashicons-edit"></span>
+                                </a>
                             </td>
                             <td>
                                 <?php
@@ -173,7 +188,9 @@ function cth_tax_surcharge_settings_page() {
                                     '_wpnonce'=> wp_create_nonce( 'cth_delete_setting_' . $setting->id )
                                 ), admin_url( 'admin.php' ) );
                                 ?>
-                                <a href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('Eintrag wirklich löschen?');">Löschen</a>
+                                <a href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('Eintrag wirklich löschen?');">
+                                    <span class="dashicons dashicons-trash"></span>
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
