@@ -1,44 +1,51 @@
 <?php
-/**
- * Plugin Name: Custom Tax Handler by PixelTeich
- * Plugin URI: https://pixelteich.de
- * Description: Passt die Mehrwertsteuer und Zuschläge basierend auf der Kundenart und Steuerklasse an.
- * Version: 4.0.2
- * Author: Jan Teichmann
- * Author URI: https://pixelteich.de
- */
+/*
+Plugin Name: Custom Tax Surcharge Handler by PixelTeich
+Description: Fügt WooCommerce einen dynamischen Zuschlag basierend auf der Kundenart hinzu und passt den Steuersatz entsprechend an. 
+             Die Kundenarten, Zuschlagshöhen und zugehörigen Steuerklassen werden in der Datenbank (wp_custom_tax_surcharge_handler) hinterlegt.
+Version: 4.0.2
+Author: Jan Teichmann
+Author URI: https://pixelteich.de
 
+Dateien und ihre Funktionen:
+- db-init.php: Initialisiert die benötigte Datenbanktabelle beim Aktivieren des Plugins.
+- helpers.php: Stellt Hilfsfunktionen bereit (z. B. Laden aller Kundenarten und Formatierung der Anzeige).
+- session-handler.php: Startet die Session und setzt eine Standard-Kundenart, wenn keine gewählt wurde.
+- ajax-handler.php: Behandelt Ajax-Anfragen (z. B. zum Speichern der Kundenart vom Checkout).
+- save-customer-type.php: (Integration der Ajax-Funktion erfolgt in ajax-handler.php.)
+- checkout-handler.php: Fügt auf der Kassenseite Radio-Buttons hinzu, die dynamisch aus der DB geladen werden.
+- display-customer-type-checkout.php: Zeigt auf der Dankeseite die gewählte Kundenart an.
+- surcharge-handler.php: Berechnet und wendet den Zuschlag im Warenkorb an.
+- tax-handler.php: Setzt die Steuerklasse anhand der gewählten Kundenart.
+- tax-class-handler.php: Erzeugt das Dropdown zur Auswahl der Steuerklasse im Adminbereich.
+- admin-menu.php: Fügt im Adminbereich das Menü für die Einstellungen hinzu.
+- admin-order.php: Zeigt im Bestell-Backend Dropdowns zur Auswahl der Kundenart und Steuerklasse an.
+- tax-surcharge-settings.php: Erlaubt im Backend die Verwaltung der Kundenarten, Zuschläge und Steuerklassen.
+- order-meta-handler.php: Aktualisiert bei Änderungen im Backend die Bestellmetadaten und berechnet neu.
+
+Sämtliche Funktionen zur Berechnung, Anzeige und Speicherung der Kundenart und Zuschläge bleiben erhalten – lediglich die zuvor hart codierten Werte werden nun dynamisch aus der Datenbank geholt.
+*/
+
+// Verhindere direkten Aufruf
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-// Plugin-Pfade definieren – vor Verwendung in Enqueues und require_once!
-define('CTH_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('CTH_PLUGIN_URL', plugin_dir_url(__FILE__));
+// Einbinden aller erforderlichen Dateien
+require_once plugin_dir_path( __FILE__ ) . 'db-init.php';
+require_once plugin_dir_path( __FILE__ ) . 'helpers.php';
+require_once plugin_dir_path( __FILE__ ) . 'session-handler.php';
+require_once plugin_dir_path( __FILE__ ) . 'ajax-handler.php';
+require_once plugin_dir_path( __FILE__ ) . 'save-customer-type.php';
+require_once plugin_dir_path( __FILE__ ) . 'checkout-handler.php';
+require_once plugin_dir_path( __FILE__ ) . 'display-customer-type-checkout.php';
+require_once plugin_dir_path( __FILE__ ) . 'surcharge-handler.php';
+require_once plugin_dir_path( __FILE__ ) . 'tax-handler.php';
+require_once plugin_dir_path( __FILE__ ) . 'tax-class-handler.php';
+require_once plugin_dir_path( __FILE__ ) . 'admin-menu.php';
+require_once plugin_dir_path( __FILE__ ) . 'admin-order.php';
+require_once plugin_dir_path( __FILE__ ) . 'tax-surcharge-settings.php';
+require_once plugin_dir_path( __FILE__ ) . 'order-meta-handler.php';
 
-/** Enqueue Scripts & Styles im Admin-Bereich **/
-add_action('admin_enqueue_scripts', function($hook) {
-    // Laden nur auf Seiten, wo Bestellungen bearbeitet werden (post.php, post-new.php)
-    if ( 'post.php' === $hook || 'post-new.php' === $hook ) {
-        wp_enqueue_script('cth-admin-js', CTH_PLUGIN_URL . 'assets/js/cth-admin.js', ['jquery'], '3.0.0', true );
-        wp_localize_script('cth-admin-js', 'cth_ajax', ['ajax_url' => admin_url('admin-ajax.php')]);
-    }
-    // Admin CSS auf allen Admin-Seiten laden
-    wp_enqueue_style('cth-admin-css', CTH_PLUGIN_URL . 'assets/css/admin.css');
-});
-
-/** Modul-Dateien einbinden **/
-require_once CTH_PLUGIN_DIR . 'includes/backend/admin-menu.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/session-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/checkout/checkout-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/order-meta-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/tax-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/surcharge-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/checkout/display-customer-type-checkout.php';
-require_once CTH_PLUGIN_DIR . 'includes/backend/tax-surcharge-settings.php'; // Neue Admin-Seite
-require_once CTH_PLUGIN_DIR . 'includes/helpers/db-init.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/save-customer-type.php';
-require_once CTH_PLUGIN_DIR . 'includes/helpers/helpers.php';
-// Alte AJAX-Dateien können entfernt werden:
-// require_once CTH_PLUGIN_DIR . 'includes/helpers/ajax-handler.php';
-// require_once CTH_PLUGIN_DIR . 'assets/js/admin-surcharge.js';
+// Aktivierungshook: Erstellen der DB-Tabelle
+register_activation_hook( __FILE__, 'cth_create_db_tables' );
