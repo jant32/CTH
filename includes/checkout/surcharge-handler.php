@@ -3,12 +3,13 @@
  * surcharge-handler.php
  *
  * Diese Datei berechnet und wendet den Kundenart-Zuschlag auf den Warenkorb an.
- * Sie liest die in der Session gespeicherte Kundenart aus, ermittelt die zugehörigen Einstellungen (Zuschlagstyp, -höhe, Steuerklasse) aus der Datenbank und fügt über WooCommerce's add_fee() den Zuschlag hinzu.
+ * Sie liest die in der Session gespeicherte Kundenart aus, ermittelt die zugehörigen Einstellungen
+ * (Zuschlagstyp, -höhe, Steuerklasse) aus der Datenbank und fügt über WooCommerce's add_fee() den Zuschlag hinzu.
  *
- * Funktionen:
- * - cth_apply_customer_surcharge(): Berechnet den Zuschlag und wendet ihn auf den Warenkorb an.
- * 
- * Zusätzlich wird über den Filter "woocommerce_fee_tax_class" sichergestellt, dass die Fee auch den in der Datenbank definierten Tax-Klasse zugeordnet wird.
+ * Zusätzlich werden zwei Filter verwendet:
+ * - 'woocommerce_fee_tax_class': Überschreibt die Tax-Klasse der Zuschlags-Fee anhand der in der DB hinterlegten Kundenart.
+ * - 'woocommerce_cart_item_tax_class': Überschreibt die Tax-Klasse der Produkte im Warenkorb, sodass diese den
+ *   ausgewählten Kundenart-Steuersatz verwenden.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -47,13 +48,12 @@ function cth_apply_customer_surcharge( $cart ) {
         $cart->add_fee( $fee_label, $surcharge, true, $option->tax_class );
     }
 }
+add_action( 'woocommerce_cart_calculate_fees', 'cth_apply_customer_surcharge' );
 
-// Filter, um sicherzustellen, dass für unsere Gebühren der korrekte Steuersatz verwendet wird.
-// Wenn der Fee-Name unserem Muster entspricht und eine Kundenart in der Session gesetzt ist, 
-// wird die Tax-Klasse anhand des in der Datenbank hinterlegten Werts überschrieben.
+// Filter, um sicherzustellen, dass für die Zuschlags-Fee der korrekte Steuersatz verwendet wird.
 add_filter( 'woocommerce_fee_tax_class', 'cth_override_fee_tax_class', 10, 2 );
 function cth_override_fee_tax_class( $tax_class, $fee ) {
-    // Wir prüfen, ob der Fee-Name einen Hinweis auf unsere Kundenart enthält (z. B. das "(" im Label).
+    // Prüfen, ob der Fee-Name einen Hinweis auf unsere Kundenart enthält.
     if ( strpos( $fee->name, '(' ) !== false ) {
         if ( isset( $_SESSION['cth_customer_type'] ) ) {
             global $wpdb;
@@ -64,6 +64,21 @@ function cth_override_fee_tax_class( $tax_class, $fee ) {
                 return $option->tax_class;
             }
         }
+    }
+    return $tax_class;
+}
+
+// Filter, um die Tax-Klasse der Produkte im Warenkorb anzupassen.
+add_filter( 'woocommerce_cart_item_tax_class', 'cth_override_cart_item_tax_class', 10, 3 );
+function cth_override_cart_item_tax_class( $tax_class, $cart_item, $cart_item_key ) {
+    if ( isset( $_SESSION['cth_customer_type'] ) && ! empty( $_SESSION['cth_customer_type'] ) ) {
+         global $wpdb;
+         $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
+         $customer_type_id = intval( $_SESSION['cth_customer_type'] );
+         $option = $wpdb->get_row( $wpdb->prepare( "SELECT tax_class FROM $table_name WHERE id = %d", $customer_type_id ) );
+         if ( $option && ! empty( $option->tax_class ) ) {
+             return $option->tax_class;
+         }
     }
     return $tax_class;
 }
