@@ -32,6 +32,9 @@ function cth_get_customer_type_options() {
 }
 
 function cth_display_checkout_customer_type_options() {
+    // Überschrift mit Pflichtkennzeichnung ausgeben
+    echo '<h3>Kundenart auswählen <span style="color: red;">*</span></h3>';
+    
     $options = cth_get_customer_type_options();
     // Aktuell ausgewählte Kundenart aus der Session.
     $current_selection = isset( $_SESSION['cth_customer_type'] ) ? $_SESSION['cth_customer_type'] : '';
@@ -41,10 +44,10 @@ function cth_display_checkout_customer_type_options() {
         foreach ( $options as $option ) {
             $formatted_value = cth_format_surcharge_display( $option );
             $checked = ( $current_selection == $option->id ) ? 'checked' : '';
-            echo '<label>';
+            echo '<label style="margin-right: 10px;">';
             echo '<input type="radio" name="cth_customer_type" value="' . esc_attr( $option->id ) . '" ' . $checked . '>';
             echo esc_html( $formatted_value );
-            echo '</label><br>';
+            echo '</label>';
         }
         echo '</div>';
     }
