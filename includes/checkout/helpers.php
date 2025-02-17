@@ -5,9 +5,9 @@
  * Diese Datei enthält Hilfsfunktionen, die im Plugin verwendet werden.
  *
  * Funktionen:
- * - cth_format_surcharge_display(): Formatiert den Anzeigenamen einer Kundenart, inkl. Zuschlagshöhe (z. B. "Name | 25%" oder "Name | +25,00€").
+ * - cth_format_surcharge_display(): Formatiert den Anzeigenamen einer Kundenart, inkl. Zuschlagshöhe (z. B. "Name | 25%" oder "Name | +25,00€").
  * - cth_get_customer_type_options(): Ruft alle Kundenart-Optionen aus der Datenbank ab.
- * - cth_display_checkout_customer_type_options(): Gibt auf der Kasse-Seite die Radio-Buttons zur Auswahl der Kundenart aus.
+ * - cth_display_checkout_customer_type_options(): Gibt auf der Kasse-Seite die Radio-Buttons zur Auswahl der Kundenart aus, inklusive einer h5-Überschrift.
  * - cth_display_customer_type_thank_you(): Zeigt auf der "Danke"-Seite die ausgewählte Kundenart an.
  */
 
@@ -32,8 +32,8 @@ function cth_get_customer_type_options() {
 }
 
 function cth_display_checkout_customer_type_options() {
-    // Überschrift mit Pflichtkennzeichnung ausgeben
-    echo '<h3>Kundenart auswählen <span style="color: red;">*</span></h3>';
+    // Überschrift mit Pflichtkennzeichnung als h5 ausgeben
+    echo '<h5>Kundenart auswählen <span style="color: red;">*</span></h5>';
     
     $options = cth_get_customer_type_options();
     // Aktuell ausgewählte Kundenart aus der Session.
@@ -44,7 +44,8 @@ function cth_display_checkout_customer_type_options() {
         foreach ( $options as $option ) {
             $formatted_value = cth_format_surcharge_display( $option );
             $checked = ( $current_selection == $option->id ) ? 'checked' : '';
-            echo '<label style="margin-right: 10px;">';
+            // Jeder Radio-Button wird als Blockelement dargestellt, sodass sie untereinander stehen.
+            echo '<label style="display: block; margin-bottom: 5px;">';
             echo '<input type="radio" name="cth_customer_type" value="' . esc_attr( $option->id ) . '" ' . $checked . '>';
             echo esc_html( $formatted_value );
             echo '</label>';
