@@ -8,7 +8,7 @@
  * - cth_format_surcharge_display(): Formatiert den Anzeigenamen einer Kundenart, inkl. Zuschlagshöhe (z. B. "Name | 25%" oder "Name | +25,00€").
  * - cth_get_customer_type_options(): Ruft alle Kundenart-Optionen aus der Datenbank ab.
  * - cth_display_checkout_customer_type_options(): Gibt auf der Kasse-Seite die Radio-Buttons zur Auswahl der Kundenart aus, inklusive einer h5-Überschrift.
- * - cth_display_customer_type_thank_you(): Zeigt auf der "Danke"-Seite die ausgewählte Kundenart an.
+ * - cth_display_customer_type_thank_you(): Zeigt auf der "Danke"-Seite bzw. im Bestelldetails-Bereich unter den Kundendaten die ausgewählte Kundenart an.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -74,3 +74,6 @@ function cth_display_customer_type_thank_you( $order_id ) {
         }
     }
 }
+
+// Hook hinzufügen, damit die Kundenart unter den Kundendaten (z. B. Email, Telefon) im Bestelldetails-Bereich angezeigt wird
+add_action( 'woocommerce_order_details_after_customer_details', 'cth_display_customer_type_thank_you' );
