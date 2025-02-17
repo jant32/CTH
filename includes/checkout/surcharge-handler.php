@@ -4,8 +4,7 @@
  *
  * Diese Datei berechnet und wendet den Kundenart-Zuschlag auf den Warenkorb an.
  * Der Zuschlag wird auf Basis des Nettowerts der Produkte berechnet und als steuerpflichtige Fee hinzugefügt.
- * Zusätzlich überschreiben die Filter 'woocommerce_cart_item_tax_class' und 'woocommerce_product_get_tax_class'
- * die Tax‑Class der Produkte im Warenkorb basierend auf der in der Session gespeicherten Kundenart.
+ * Außerdem überschreiben die Filter die Tax‑Class der Produkte basierend auf der in der Session gespeicherten Kundenart.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -13,12 +12,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function cth_apply_customer_surcharge( $cart ) {
-    // Nur im Frontend (oder per AJAX) ausführen.
     if ( is_admin() && ! defined( 'DOING_AJAX' ) ) {
         return;
     }
     
-    // Prüfe, ob die Kundenart in der Session gesetzt ist.
     if ( empty( $_SESSION['cth_customer_type'] ) ) {
         return;
     }
@@ -30,11 +27,7 @@ function cth_apply_customer_surcharge( $cart ) {
         return;
     }
     
-    /*
-     * Annahme: $cart->cart_contents_total liefert den Nettobetrag der Produkte.
-     * Falls Dein Shop Bruttopreise verwendet, müsstest Du hier den Nettowert berechnen,
-     * z. B. durch: $net_total = $cart->cart_contents_total / (1 + $tax_rate_decimal);
-     */
+    // Nehme an, dass $cart->cart_contents_total den Nettowert liefert (sonst Umrechnung vornehmen)
     $net_total = $cart->cart_contents_total;
     
     if ( $option->surcharge_type == 'percentage' ) {
@@ -46,13 +39,10 @@ function cth_apply_customer_surcharge( $cart ) {
         $fee_label = $option->surcharge_name . ' (+' . number_format( $option->surcharge_value, 2 ) . '€)';
     }
     
-    // Füge den Zuschlag als steuerpflichtige Fee hinzu.
     $cart->add_fee( $fee_label, $surcharge_amount, true, $option->tax_class );
 }
 add_action( 'woocommerce_cart_calculate_fees', 'cth_apply_customer_surcharge' );
 
-
-// Überschreibe die Tax‑Class der Produkte im Warenkorb anhand der in der Session gespeicherten Kundenart.
 add_filter( 'woocommerce_cart_item_tax_class', 'cth_override_cart_item_tax_class', 10, 3 );
 function cth_override_cart_item_tax_class( $tax_class, $cart_item, $cart_item_key ) {
     if ( isset( $_SESSION['cth_customer_type'] ) && ! empty( $_SESSION['cth_customer_type'] ) ) {
@@ -66,7 +56,6 @@ function cth_override_cart_item_tax_class( $tax_class, $cart_item, $cart_item_ke
     return $tax_class;
 }
 
-// Fallback-Filter: Überschreibe die Tax‑Class eines Produkts, wenn diese abgefragt wird.
 add_filter( 'woocommerce_product_get_tax_class', 'cth_override_product_tax_class', 10, 2 );
 function cth_override_product_tax_class( $tax_class, $product ) {
     if ( isset( $_SESSION['cth_customer_type'] ) && ! empty( $_SESSION['cth_customer_type'] ) ) {
