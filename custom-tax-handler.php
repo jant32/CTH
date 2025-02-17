@@ -44,7 +44,7 @@ require_once plugin_dir_path( __FILE__ ) . 'tax-handler.php';
 require_once plugin_dir_path( __FILE__ ) . 'tax-class-handler.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin-menu.php';
 require_once plugin_dir_path( __FILE__ ) . 'admin-order.php';
-require_once plugin_dir_path( __FILE__ ) . 'tax-surcharge-settings.php';
+//require_once plugin_dir_path( __FILE__ ) . 'tax-surcharge-settings.php';
 require_once plugin_dir_path( __FILE__ ) . 'order-meta-handler.php';
 
 // Aktivierungshook: Erstellen der DB-Tabelle
