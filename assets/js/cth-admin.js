@@ -22,7 +22,6 @@ jQuery(document).ready(function($) {
                 success: function(response) {
                     if(response.success) {
                         console.log('Frontend AJAX:', response.data.message);
-                        // Optional: Neuberechnung des Warenkorbs anstoßen.
                         $('body').trigger('update_checkout');
                     } else {
                         console.log('Frontend AJAX Fehler:', response.data.message);
@@ -45,7 +44,7 @@ jQuery(document).ready(function($) {
                 return;
             }
             $.ajax({
-                url: ajaxurl, // In Admin-Bereichen ist ajaxurl standardmäßig definiert.
+                url: ajaxurl,
                 type: 'POST',
                 data: {
                     action: 'cth_update_order_fee',
@@ -56,7 +55,7 @@ jQuery(document).ready(function($) {
                     console.log('Admin AJAX-Erfolg:', response);
                     if(response.success) {
                         alert('Die Berechnung wurde aktualisiert.');
-                        // Option: Seite neu laden, um die aktualisierten Totals zu sehen.
+                        // Option: Seite neu laden, um aktualisierte Totals zu sehen.
                         // location.reload();
                     } else {
                         alert('Fehler: ' + response.data);
