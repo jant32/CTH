@@ -28,7 +28,41 @@ jQuery(document).ready(function($) {
             }
         });
     });
-
+    
+    // Admin: Bei Änderung des Kundenart-Dropdowns in der Bestelldetailsseite, führe einen AJAX-Aufruf aus,
+    // um den neuen Kundenart-Wert zu speichern und den Zuschlag sowie die Steuer neu zu berechnen.
+    if ($('#cth_customer_type').length) {
+        $('#cth_customer_type').on('change', function() {
+            var newCustomerType = $(this).val();
+            var orderId = $(this).data('order-id');
+            if (!orderId) {
+                alert('Order ID fehlt.');
+                return;
+            }
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'cth_update_order_fee',
+                    order_id: orderId,
+                    customer_type: newCustomerType
+                },
+                success: function(response) {
+                    if(response.success) {
+                        alert('Die Berechnung wurde aktualisiert.');
+                        // Option: Seite neu laden, um aktualisierte Totals anzuzeigen
+                        // location.reload();
+                    } else {
+                        alert('Fehler: ' + response.data);
+                    }
+                },
+                error: function() {
+                    alert('AJAX-Fehler.');
+                }
+            });
+        });
+    }
+    
     // Admin: Update surcharge sign based on surcharge type selection.
     function updateSurchargeSign() {
         var type = $('#surcharge_type').val();

@@ -34,7 +34,7 @@ function cth_admin_order_custom_field_display( $order ) {
     ?>
     <p class="form-field form-field-wide">
         <label for="cth_customer_type"><?php _e( 'Kundenart', 'text-domain' ); ?></label>
-        <select name="cth_customer_type" id="cth_customer_type" class="wc-enhanced-select">
+        <select name="cth_customer_type" id="cth_customer_type" class="wc-enhanced-select" data-order-id="<?php echo esc_attr( $order_id ); ?>">
             <option value=""><?php _e( 'Wähle eine Kundenart', 'text-domain' ); ?></option>
             <?php
             if ( $options ) {
@@ -53,7 +53,7 @@ function cth_admin_order_custom_field_display( $order ) {
 add_action( 'woocommerce_admin_order_data_after_order_details', 'cth_admin_order_custom_field_display' );
 
 /**
- * Speichert den ausgewählten Kundenart-Wert, wenn die Bestellung aktualisiert wird.
+ * Speichert den ausgewählten Kundenart-Wert, wenn die Bestellung im Admin-Bereich aktualisiert wird.
  *
  * @param int $post_id
  */
@@ -63,4 +63,25 @@ function cth_admin_order_save_custom_field( $post_id ) {
     }
 }
 add_action( 'save_post_shop_order', 'cth_admin_order_save_custom_field' );
-?>
+
+/**
+ * AJAX-Handler: Aktualisiert die Order-Fee, wenn im Admin-Dropdown die Kundenart geändert wird.
+ */
+function cth_ajax_update_order_fee() {
+    if ( ! current_user_can( 'edit_shop_orders' ) ) {
+        wp_send_json_error( 'Unauthorized' );
+    }
+    $order_id = isset( $_POST['order_id'] ) ? intval( $_POST['order_id'] ) : 0;
+    $customer_type = isset( $_POST['customer_type'] ) ? sanitize_text_field( $_POST['customer_type'] ) : '';
+    if ( ! $order_id || empty( $customer_type ) ) {
+        wp_send_json_error( 'Missing parameters' );
+    }
+    // Aktualisiere den Order-Meta-Eintrag
+    update_post_meta( $order_id, '_cth_customer_type', $customer_type );
+    // Rufe die Funktion auf, die die Order-Meta aktualisiert und den Zuschlag neu berechnet
+    if ( function_exists( 'cth_update_order_meta' ) ) {
+        cth_update_order_meta( $order_id );
+    }
+    wp_send_json_success( 'Order fees updated' );
+}
+add_action( 'wp_ajax_cth_update_order_fee', 'cth_ajax_update_order_fee' );
