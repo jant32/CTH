@@ -33,7 +33,7 @@ if ( ! $new_table_exists ) {
         id mediumint(9) NOT NULL AUTO_INCREMENT,
         surcharge_name varchar(255) NOT NULL,
         surcharge_type varchar(50) NOT NULL,
-        surcharge_value float NOT NULL,
+        surcharge_value DECIMAL(20,8) NOT NULL,
         tax_class varchar(100) NOT NULL,
         PRIMARY KEY  (id)
     ) $charset_collate;";
