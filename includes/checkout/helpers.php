@@ -60,12 +60,10 @@ function cth_display_checkout_customer_type_options() {
 function cth_display_customer_type_thank_you( $order_id ) {
     // Zunächst den Kundenart-Wert aus den Bestellmetadaten abfragen
     $meta = get_post_meta( $order_id, '_cth_customer_type', true );
-    // Falls der Rückgabewert ein Objekt ist, versuche ihn in einen String umzuwandeln
-    if ( is_object( $meta ) && method_exists( $meta, '__toString' ) ) {
-        $meta = $meta->__toString();
-    } elseif ( is_object( $meta ) ) {
-        // Falls keine __toString-Methode vorhanden ist, konvertiere in Array und nimm den ersten Wert
-        $meta = ( is_array( $meta ) ) ? reset( $meta ) : '';
+    // Wenn der Wert ein Objekt ist, in Array umwandeln und ersten Wert verwenden
+    if ( is_object( $meta ) ) {
+        $meta = (array)$meta;
+        $meta = reset( $meta );
     } elseif ( is_array( $meta ) ) {
         $meta = reset( $meta );
     }
@@ -76,10 +74,9 @@ function cth_display_customer_type_thank_you( $order_id ) {
         global $wpdb;
         $order_table = $wpdb->prefix . 'custom_order_data';
         $meta_from_db = $wpdb->get_var( $wpdb->prepare( "SELECT customer_type FROM $order_table WHERE order_id = %d", $order_id ) );
-        if ( is_object( $meta_from_db ) && method_exists( $meta_from_db, '__toString' ) ) {
-            $meta_from_db = $meta_from_db->__toString();
-        } elseif ( is_object( $meta_from_db ) ) {
-            $meta_from_db = ( is_array( $meta_from_db ) ) ? reset( $meta_from_db ) : '';
+        if ( is_object( $meta_from_db ) ) {
+            $meta_from_db = (array)$meta_from_db;
+            $meta_from_db = reset( $meta_from_db );
         } elseif ( is_array( $meta_from_db ) ) {
             $meta_from_db = reset( $meta_from_db );
         }
@@ -89,6 +86,7 @@ function cth_display_customer_type_thank_you( $order_id ) {
     if ( $customer_type_id ) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'custom_tax_surcharge_handler';
+        // Jetzt wird sichergestellt, dass customer_type_id ein Skalar ist.
         $option = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $customer_type_id ) );
         if ( $option ) {
             echo '<p><strong>Kundenart:</strong> ' . esc_html( cth_format_surcharge_display( $option ) ) . '</p>';
