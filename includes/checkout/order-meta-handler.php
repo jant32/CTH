@@ -6,26 +6,23 @@
  * Neben der Aktualisierung der Order‑Meta (die z. B. im Admin‑Bereich verwendet werden)
  * wird hier auch die Tabelle wp_custom_order_data (über save-customer-type.php) aktualisiert.
  *
- * Zusätzlich wird beim Speichern der Bestellung (sowohl im Frontend als auch im Admin‑Backend)
- * die Zuschlagsberechnung neu durchgeführt – basierend auf der gewählten Kundenart.
- * Dabei wird die gleiche Berechnungslogik wie im Frontend angewendet:
- *   - Berechnung des Produkt‑Subtotals aus den Line Items,
- *   - Neuberechnung des Zuschlags (prozentual oder fester Betrag) und
- *   - Aktualisierung der Fee‑Order Items sowie der Gesamt‑ und Steuerwerte der Bestellung.
+ * Beim Abschluss des Checkouts (über den Hook woocommerce_checkout_update_order_meta)
+ * oder beim Speichern der Bestellung im Admin‑Bereich (über den Hook save_post_shop_order)
+ * wird die Funktion cth_update_order_meta() aufgerufen, die in der Tabelle wp_custom_order_data
+ * einen Eintrag (oder ein Update) vornimmt:
+ * - order_id: Die ID der Bestellung (Verbindung zu wp_wc_orders)
+ * - customer_type: Der in der Tabelle wp_custom_tax_surcharge_handler hinterlegte Wert aus der Spalte surcharge_name
+ * - tax_class: Der Tax-Class-Slug, der in wp_woocommerce_tax_rates verwendet wird
+ * - created_at: Wird per Datenbankdefault automatisch gesetzt
+ *
+ * Außerdem wird der Zuschlag (Fee) neu berechnet, sodass bei einer Änderung der Kundenart die
+ * Zuschlags- und Steuerwerte aktualisiert werden.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-/**
- * Aktualisiert die Bestellmetadaten in Zusammenhang mit der Kundenart.
- * Ruft danach die Funktion zum Neuberechnen des Zuschlags auf.
- *
- * @param int   $order_id
- * @param mixed $post
- * @param bool  $update
- */
 function cth_update_order_meta( $order_id, $post = false, $update = false ) {
     if ( ! $order_id ) {
         return;
@@ -35,16 +32,18 @@ function cth_update_order_meta( $order_id, $post = false, $update = false ) {
     $customer_type = get_post_meta( $order_id, '_cth_customer_type', true );
     $tax_class = get_post_meta( $order_id, '_cth_tax_class', true );
     
-    // Falls nicht gesetzt, Fallback auf den Session-Wert (sofern vorhanden)
-    if ( empty( $customer_type ) && isset( $_SESSION['cth_customer_type'] ) ) {
-        $customer_type = $_SESSION['cth_customer_type'];
-    }
-    if ( empty( $tax_class ) && isset( $_SESSION['cth_customer_type'] ) ) {
-        global $wpdb;
-        $surcharge_table = $wpdb->prefix . 'custom_tax_surcharge_handler';
-        $option = $wpdb->get_row( $wpdb->prepare( "SELECT tax_class FROM $surcharge_table WHERE id = %d", intval( $_SESSION['cth_customer_type'] ) ) );
-        if ( $option && ! empty( $option->tax_class ) ) {
-            $tax_class = $option->tax_class;
+    // Nur im Frontend (nicht im Admin) als Fallback die Session nutzen:
+    if ( ! is_admin() ) {
+        if ( empty( $customer_type ) && isset( $_SESSION['cth_customer_type'] ) ) {
+            $customer_type = $_SESSION['cth_customer_type'];
+        }
+        if ( empty( $tax_class ) && isset( $_SESSION['cth_customer_type'] ) ) {
+            global $wpdb;
+            $surcharge_table = $wpdb->prefix . 'custom_tax_surcharge_handler';
+            $option = $wpdb->get_row( $wpdb->prepare( "SELECT tax_class FROM $surcharge_table WHERE id = %d", intval( $_SESSION['cth_customer_type'] ) ) );
+            if ( $option && ! empty( $option->tax_class ) ) {
+                $tax_class = $option->tax_class;
+            }
         }
     }
     
@@ -60,25 +59,20 @@ add_action( 'woocommerce_checkout_update_order_meta', 'cth_update_order_meta', 1
 add_action( 'save_post_shop_order', 'cth_update_order_meta', 20, 3 );
 
 /**
- * Berechnet den Produkt-Subtotal für die Bestellung.
+ * (Hier folgen die Funktionen cth_recalc_order_fees() und cth_get_order_product_subtotal() sowie alle dazugehörigen Funktionen,
+ * wie in der vorherigen Version implementiert.)
  *
- * @param WC_Order $order
- * @return float
+ * Diese Funktionen berechnen den Produkt-Subtotal, den neuen Zuschlag und aktualisieren die Bestell-Fees.
  */
+
 function cth_get_order_product_subtotal( $order ) {
     $subtotal = 0;
     foreach ( $order->get_items( 'line_item' ) as $item_id => $item ) {
-        // Hier verwenden wir den Gesamtwert des Items (exkl. Versand, Gebühren etc.)
         $subtotal += floatval( $item->get_total() );
     }
     return $subtotal;
 }
 
-/**
- * Rechnet den Zuschlag (Fee) für die Bestellung neu und aktualisiert bzw. fügt den entsprechenden Fee-Order Item ein.
- *
- * @param int $order_id
- */
 function cth_recalc_order_fees( $order_id ) {
     $order = wc_get_order( $order_id );
     if ( ! $order ) {
@@ -88,11 +82,8 @@ function cth_recalc_order_fees( $order_id ) {
     // Berechne den Produkt-Subtotal (alle Line Items vom Typ 'line_item')
     $product_subtotal = cth_get_order_product_subtotal( $order );
     
-    // Bestimme die gewählte Kundenart; verwende Order-Meta oder Session als Fallback
+    // Bestimme die gewählte Kundenart; verwende Order-Meta (ohne Fallback, da Admin-Bereich)
     $customer_type = get_post_meta( $order_id, '_cth_customer_type', true );
-    if ( empty( $customer_type ) && isset( $_SESSION['cth_customer_type'] ) ) {
-        $customer_type = $_SESSION['cth_customer_type'];
-    }
     if ( empty( $customer_type ) ) {
         return;
     }
@@ -131,9 +122,7 @@ function cth_recalc_order_fees( $order_id ) {
         $fee = new WC_Order_Item_Fee();
         $fee->set_name( $fee_label );
         $fee->set_total( $new_surcharge );
-        // Setze die Tax-Class, damit bei der Neuberechnung die Steuer angewendet wird
         $fee->set_tax_class( $option->tax_class );
-        // WooCommerce kann die Steuer für das Fee-Item berechnen, wenn wir es als steuerpflichtig markieren:
         $fee->set_tax_status( 'taxable' );
         $order->add_item( $fee );
     }
