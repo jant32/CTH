@@ -183,7 +183,7 @@ function cth_tax_surcharge_settings_page() {
                                     <span class="dashicons dashicons-edit"></span>
                                 </a>
                                 <span style="margin: 0 4px;"></span>
-                                <a href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('Eintrag wirklich löschen?');" title="Löschen">
+                                <a href="<?php echo esc_url( $delete_url ); ?>" onclick="return confirm('Möchtest Du die Kundenart endgültig löschen?');" title="Löschen">
                                     <span class="dashicons dashicons-trash"></span>
                                 </a>
                             </td>
@@ -222,7 +222,7 @@ function cth_handle_settings_form_submission( $table_name ) {
             array( '%s', '%s', '%f', '%s' ),
             array( '%d' )
         );
-        echo '<div class="notice notice-success is-dismissible"><p>Eintrag aktualisiert.</p></div>';
+        echo '<div class="notice notice-success is-dismissible"><p>Kundenart aktualisiert.</p></div>';
     } else {
         $wpdb->insert(
             $table_name,
@@ -234,6 +234,6 @@ function cth_handle_settings_form_submission( $table_name ) {
             ),
             array( '%s', '%s', '%f', '%s' )
         );
-        echo '<div class="notice notice-success is-dismissible"><p>Eintrag hinzugefügt.</p></div>';
+        echo '<div class="notice notice-success is-dismissible"><p>Kundenart hinzugefügt.</p></div>';
     }
 }
