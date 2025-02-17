@@ -10,8 +10,8 @@
  * - cth_get_customer_type_options(): Ruft alle Kundenart-Optionen aus der Datenbank ab.
  * - cth_display_checkout_customer_type_options(): Gibt auf der Kasse-Seite die Radio-Buttons zur 
  *   Auswahl der Kundenart aus, inklusive einer h5-Überschrift.
- * - cth_display_customer_type_thank_you(): Zeigt im Bestell-Detailbereich (Thank-You-Seite) die 
- *   ausgewählte Kundenart an, basierend auf dem Eintrag in der Tabelle wp_custom_order_data.
+ * - cth_display_customer_type_thank_you(): Zeigt im Bestelldetails-Bereich unter den Kundendaten 
+ *   (z. B. E-Mail, Telefon) die ausgewählte Kundenart an – und stellt sicher, dass dies nur einmal erfolgt.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -58,12 +58,20 @@ function cth_display_checkout_customer_type_options() {
 }
 
 function cth_display_customer_type_thank_you( $order ) {
-    // Bestimme die Order-ID
+    // Stelle sicher, dass wir die Ausgabe nur einmal durchführen.
+    static $output_done = false;
+    if ( $output_done ) {
+        return;
+    }
+    $output_done = true;
+    
+    // Bestimme zunächst die Order-ID
     if ( is_object( $order ) && method_exists( $order, 'get_id' ) ) {
         $order_id = $order->get_id();
     } else {
         $order_id = intval( $order );
     }
+    
     global $wpdb;
     $order_table = $wpdb->prefix . 'custom_order_data';
     $customer_type = $wpdb->get_var( $wpdb->prepare( "SELECT customer_type FROM $order_table WHERE order_id = %d", $order_id ) );
