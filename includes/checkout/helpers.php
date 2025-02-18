@@ -8,10 +8,11 @@
  * - cth_format_surcharge_display(): Formatiert den Anzeigenamen einer Kundenart inkl. Zuschlagshöhe 
  *   (z. B. "Name | 25%" oder "Name | +25,00€").
  * - cth_get_customer_type_options(): Ruft alle Kundenart-Optionen aus der Datenbank ab.
- * - cth_display_checkout_customer_type_options(): Gibt auf der Kassenseite die Radio-Buttons zur 
- *   Auswahl der Kundenart aus, inklusive einer h5-Überschrift.
- * - cth_display_customer_type_thank_you(): Zeigt im Bestelldetails-Bereich (Thank-You-/Detailseite) die 
- *   ausgewählte Kundenart an. (Diese Funktion wird über den Hook 'woocommerce_order_details_after_customer_details' aufgerufen.)
+ * - cth_display_checkout_customer_type_options(): Gibt auf der Kassenseite die Radio-Buttons zur Auswahl
+ *   der Kundenart aus, inklusive einer h5-Überschrift.
+ * - cth_display_customer_type_thank_you(): Zeigt im Bestelldetails-Bereich (Thank-You-/Detailseite) die
+ *   ausgewählte Kundenart an. Dabei wird der in wp_custom_order_data gespeicherte Wert (als ID) verwendet,
+ *   um den entsprechenden Datensatz aus wp_custom_tax_surcharge_handler zu laden.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -42,13 +43,13 @@ if ( ! function_exists( 'cth_display_checkout_customer_type_options' ) ) {
     function cth_display_checkout_customer_type_options() {
         echo '<h5>Kundenart auswählen <span style="color: red;">*</span></h5>';
         $options = cth_get_customer_type_options();
-        $current_selection = isset($_SESSION['cth_customer_type']) ? intval($_SESSION['cth_customer_type']) : '';
+        $current_selection = isset( $_SESSION['cth_customer_type'] ) ? intval($_SESSION['cth_customer_type']) : '';
         if ( $options ) {
             echo '<div id="cth-customer-type-options">';
             foreach ( $options as $option ) {
                 $formatted_value = cth_format_surcharge_display( $option );
                 $checked = ($current_selection == $option->id) ? 'checked' : '';
-                echo '<label style="display:block; margin-bottom:5px;">';
+                echo '<label style="display: block; margin-bottom: 5px;">';
                 echo '<input type="radio" name="cth_customer_type" value="' . esc_attr( $option->id ) . '" ' . $checked . '>';
                 echo esc_html( $formatted_value );
                 echo '</label>';
@@ -60,7 +61,7 @@ if ( ! function_exists( 'cth_display_checkout_customer_type_options' ) ) {
 
 if ( ! function_exists( 'cth_display_customer_type_thank_you' ) ) {
     function cth_display_customer_type_thank_you( $order ) {
-        // Bestimme zunächst die Order-ID
+        // Bestimme die Order-ID
         if ( is_object( $order ) && method_exists( $order, 'get_id' ) ) {
             $order_id = $order->get_id();
         } else {
@@ -68,7 +69,7 @@ if ( ! function_exists( 'cth_display_customer_type_thank_you' ) ) {
         }
         global $wpdb;
         $order_table = $wpdb->prefix . 'custom_order_data';
-        // Hier erwarten wir, dass in der Spalte customer_type die Kundenart-ID gespeichert ist.
+        // Wir erwarten, dass in der Spalte customer_type eine Kundenart-ID gespeichert ist.
         $customer_type_id = intval( $wpdb->get_var( $wpdb->prepare( "SELECT customer_type FROM $order_table WHERE order_id = %d", $order_id ) ) );
         if ( $customer_type_id ) {
             $table = $wpdb->prefix . 'custom_tax_surcharge_handler';
