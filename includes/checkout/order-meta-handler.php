@@ -2,33 +2,24 @@
 /*
  * order-meta-handler.php
  *
- * Diese Datei aktualisiert die Bestellmetadaten in Zusammenhang mit der Kundenart und Steuerklasse.
- * Sie wird sowohl beim Checkout (über den Hook woocommerce_checkout_update_order_meta)
- * als auch im Admin-Bereich (über den Hook save_post_shop_order bzw. woocommerce_process_shop_order_meta)
- * aufgerufen.
+ * Diese Datei aktualisiert die Bestellmetadaten in Zusammenhang mit der Kundenart.
+ * Sie wird sowohl beim Checkout (über woocommerce_checkout_update_order_meta)
+ * als auch im Admin-Bereich (über save_post_shop_order bzw. woocommerce_process_shop_order_meta) aufgerufen.
  *
- * Folgendes geschieht:
- * 1. Es wird der im Formular (oder in der Order Meta) übermittelte Kundenart-Wert (_cth_customer_type) verwendet.
- * 2. Über die Funktion cth_save_customer_type_to_order() wird dieser Wert (als ID) in wp_custom_order_data gespeichert.
- * 3. Anschließend wird die gesamte Bestellberechnung neu durchgeführt:
- *    - Alle existierenden Fee-Items (Zuschläge), deren Name den Marker "[CTH]" oder den alten surcharge_name enthält, werden entfernt.
- *    - Für alle Produktzeilen wird die Tax‑Class auf den neuen Wert gesetzt und deren Steuer-Daten gelöscht.
- *    - Der neue Zuschlag wird basierend auf dem Nettopreis der Produkte (berechnet aus get_subtotal()) und dem in der Option definierten Zuschlagssatz berechnet.
- *    - Ein neues Fee-Item mit der entsprechenden Tax‑Class wird hinzugefügt.
- *    - Zum Schluss werden die Bestellwerte (Gesamt, Steuer) neu kalkuliert und gespeichert.
+ * Der Ablauf:
+ * 1. Der im Checkout übermittelte Kundenart-Wert (als ID) wird ausgelesen und in die Order Meta (_cth_customer_type) gespeichert.
+ * 2. Über cth_save_customer_type_to_order() wird dieser Wert in der Tabelle wp_custom_order_data gespeichert.
+ * 3. Anschließend wird cth_recalc_order_fees() aufgerufen, die:
+ *    - Alle vorhandenen Zuschlags-Fee-Items entfernt, deren Name den alten Custom Tag (bzw. den alten surcharge_name) enthält,
+ *    - Den neuen Zuschlag basierend auf dem Nettopreis der Produkte berechnet,
+ *    - Ein neues Fee-Item mit dem Custom Tag und den korrekten Zuschlags- und Steuerwerten hinzufügt,
+ *    - Die Tax-Class aller Produkte aktualisiert und die Bestellwerte neu kalkuliert.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-/**
- * Aktualisiert die Order-Meta-Daten und führt eine Neuberechnung der Zuschläge und Steuern durch.
- *
- * @param int   $order_id
- * @param mixed $post (optional)
- * @param bool  $update (optional)
- */
 function cth_update_order_meta( $order_id, $post = false, $update = false ) {
     if ( ! $order_id ) {
         return;
@@ -36,39 +27,20 @@ function cth_update_order_meta( $order_id, $post = false, $update = false ) {
     
     // Lese den Kundenart-Wert aus den Order-Meta-Daten
     $customer_type = get_post_meta( $order_id, '_cth_customer_type', true );
-    $tax_class = get_post_meta( $order_id, '_cth_tax_class', true ); // (falls vorhanden)
-    
-    // Im Frontend (nicht im Admin) können Fallbacks aus der Session genutzt werden – im Admin nicht.
-    if ( ! is_admin() ) {
-        if ( empty( $customer_type ) && WC()->session && WC()->session->get('cth_customer_type') ) {
-            $customer_type = WC()->session->get('cth_customer_type');
-        }
-        if ( empty( $tax_class ) && ! empty( $customer_type ) ) {
-            global $wpdb;
-            $table = $wpdb->prefix . 'custom_tax_surcharge_handler';
-            $option = $wpdb->get_row( $wpdb->prepare( "SELECT tax_class FROM $table WHERE id = %d", intval( $customer_type ) ) );
-            if ( $option && ! empty( $option->tax_class ) ) {
-                $tax_class = $option->tax_class;
-            }
-        }
-    }
-    
-    // Speichere in der Tabelle wp_custom_order_data (nur der Kundenart, als ID)
+    // Speichere in wp_custom_order_data (über cth_save_customer_type_to_order)
     if ( function_exists( 'cth_save_customer_type_to_order' ) ) {
         cth_save_customer_type_to_order( $order_id, $customer_type );
     }
     
-    // Neuberechnung der Zuschläge und Steuern
+    // Neuberechnung des Zuschlags und der Steuern
     cth_recalc_order_fees( $order_id );
 }
-add_action( 'woocommerce_checkout_update_order_meta', 'cth_update_order_meta', 10, 3 );
-add_action( 'save_post_shop_order', 'cth_update_order_meta', 20, 3 );
-add_action( 'woocommerce_process_shop_order_meta', 'cth_update_order_meta', 99, 3 );
+add_action( 'woocommerce_checkout_update_order_meta', 'cth_update_order_meta', 10, 1 );
+add_action( 'save_post_shop_order', 'cth_update_order_meta', 20, 1 );
+add_action( 'woocommerce_process_shop_order_meta', 'cth_update_order_meta', 99, 1 );
 
 /**
- * Berechnet den Nettopreis für alle Produkte in der Bestellung.
- *
- * Wir nutzen get_subtotal(), da dies den Nettopreis (ohne Steuern) liefert.
+ * Berechnet den Nettopreis der Produkte in der Bestellung.
  *
  * @param WC_Order $order
  * @return float
@@ -82,9 +54,9 @@ function cth_get_order_product_net_total( $order ) {
 }
 
 /**
- * Aktualisiert die Zuschlag-Fee und die Tax-Class der Produkte in der Bestellung.
+ * Aktualisiert die Zuschlags-Fee und die Tax-Class der Produkte in der Bestellung.
  *
- * Der Zuschlag wird auf Basis des Nettopreises berechnet.
+ * Der neue Custom Tag wird aus der Option 'cth_custom_fee_tag' geladen, und falls nicht gesetzt, wird 'CTH' als Default verwendet.
  *
  * @param int $order_id
  */
@@ -97,7 +69,7 @@ function cth_recalc_order_fees( $order_id ) {
     // Ermittele den Nettopreis der Produkte
     $product_net_total = cth_get_order_product_net_total( $order );
     
-    // Lese den aktuell gewählten Kundenart-Wert (als Option-ID) aus der Order Meta
+    // Lese den Kundenart-Wert (als Option-ID) aus der Order Meta
     $customer_type = intval( get_post_meta( $order_id, '_cth_customer_type', true ) );
     if ( empty( $customer_type ) ) {
         return;
@@ -109,6 +81,11 @@ function cth_recalc_order_fees( $order_id ) {
     if ( ! $option ) {
         return;
     }
+    
+    // Lade den Custom Fee Tag aus den Optionen, falls vorhanden (max. 8 Zeichen); ansonsten Default 'CTH'
+    $custom_tag = get_option( 'cth_custom_fee_tag', 'CTH' );
+    // Der Custom Tag wird in eckigen Klammern dargestellt:
+    $custom_tag = '[' . $custom_tag . ']';
     
     // Ermittle den Steuersatz für die gewählte Tax-Class
     $tax_rates = WC_Tax::get_rates( $option->tax_class );
@@ -122,27 +99,27 @@ function cth_recalc_order_fees( $order_id ) {
         $new_surcharge = floatval( $option->surcharge_value );
     }
     
-    // Definiere den neuen Fee-Namen mit Marker "[CTH]"
+    // Erstelle den neuen Fee-Namen unter Verwendung des Custom Fee Tags
     if ( $option->surcharge_type === 'percentage' ) {
-        $fee_label = '[CTH] ' . $option->surcharge_name . ' (' . floatval( $option->surcharge_value ) . '%)';
+        $fee_label = $custom_tag . ' ' . $option->surcharge_name . ' (' . floatval( $option->surcharge_value ) . '%)';
     } else {
-        $fee_label = '[CTH] ' . $option->surcharge_name . ' (+' . number_format( $option->surcharge_value, 2 ) . '€)';
+        $fee_label = $custom_tag . ' ' . $option->surcharge_name . ' (+' . number_format( $option->surcharge_value, 2 ) . '€)';
     }
     
-    // Entferne vorhandene Zuschlags-Fee-Items, deren Name entweder den Marker "[CTH]" oder den alten surcharge_name enthält
+    // Entferne alle existierenden Fee-Items, deren Name den Custom Tag (bzw. den alten Standardtag) oder den surcharge_name enthält.
     foreach ( $order->get_items( 'fee' ) as $item_id => $item ) {
         $fee_name = $item->get_name();
-        if ( strpos( $fee_name, '[CTH]' ) !== false || strpos( $fee_name, $option->surcharge_name ) !== false ) {
+        // Prüfe, ob der Name entweder den aktuellen Custom Tag (mit eckigen Klammern) oder den alten Standard ("[CTH]") oder den surcharge_name enthält.
+        if ( strpos( $fee_name, $custom_tag ) !== false || strpos( $fee_name, '[CTH]' ) !== false || strpos( $fee_name, $option->surcharge_name ) !== false ) {
             $order->remove_item( $item_id );
         }
     }
     
-    // Füge ein neues Fee-Item hinzu, falls ein Zuschlag berechnet wurde
+    // Füge ein neues Fee-Item hinzu, falls ein Zuschlag berechnet wurde.
     if ( $new_surcharge > 0 ) {
         $fee = new WC_Order_Item_Fee();
         $fee->set_name( $fee_label );
         $fee->set_total( $new_surcharge );
-        // Setze die Tax-Class, damit WooCommerce den Zuschlag mit dem richtigen Steuersatz behandelt
         $fee->set_tax_class( $option->tax_class );
         $fee->set_tax_status( 'taxable' );
         $order->add_item( $fee );
@@ -151,7 +128,7 @@ function cth_recalc_order_fees( $order_id ) {
     // Aktualisiere die Tax-Class aller Produktzeilen in der Bestellung
     foreach ( $order->get_items( 'line_item' ) as $item ) {
         $item->set_tax_class( $option->tax_class );
-        // Leere vorhandene Steuer-Daten, damit sie neu berechnet werden
+        // Leere vorhandene Steuern, damit diese neu berechnet werden
         $item->set_taxes( array() );
         $item->save();
     }

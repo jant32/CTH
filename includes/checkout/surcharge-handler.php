@@ -4,7 +4,7 @@
  *
  * Diese Datei berechnet und wendet den Kundenart-Zuschlag auf den Warenkorb an.
  * Der Zuschlag wird auf Basis des Nettowerts der Produkte berechnet und als steuerpflichtige Fee hinzugefügt.
- * Außerdem überschreiben die Filter die Tax‑Class der Produkte basierend auf der in der Session gespeicherten Kundenart.
+ * Zusätzlich überschreiben die Filter die Tax‑Class der Produkte im Warenkorb basierend auf der in der Session gespeicherten Kundenart.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -27,7 +27,7 @@ function cth_apply_customer_surcharge( $cart ) {
         return;
     }
     
-    // Nehme an, dass $cart->cart_contents_total den Nettowert liefert (sonst Umrechnung vornehmen)
+    // Nehme an, dass $cart->cart_contents_total den Nettobetrag liefert (sonst Umrechnung vornehmen)
     $net_total = $cart->cart_contents_total;
     
     if ( $option->surcharge_type == 'percentage' ) {
@@ -39,7 +39,26 @@ function cth_apply_customer_surcharge( $cart ) {
         $fee_label = $option->surcharge_name . ' (+' . number_format( $option->surcharge_value, 2 ) . '€)';
     }
     
-    $cart->add_fee( $fee_label, $surcharge_amount, true, $option->tax_class );
+    // Lade den Custom Fee Tag aus den Optionen, Standard ist "CTH"
+    $custom_tag = get_option( 'cth_custom_fee_tag', 'CTH' );
+    $custom_tag = '[' . $custom_tag . ']';
+    
+    // Baue den finalen Fee-Namen auf
+    if ( $option->surcharge_type == 'percentage' ) {
+        $final_fee_label = $custom_tag . ' ' . $option->surcharge_name . ' (' . floatval( $option->surcharge_value ) . '%)';
+    } else {
+        $final_fee_label = $custom_tag . ' ' . $option->surcharge_name . ' (+' . number_format( $option->surcharge_value, 2 ) . '€)';
+    }
+    
+    // Entferne vorhandene Fee-Items, die den Custom Tag, den Standardtag oder den surcharge_name enthalten
+    foreach ( $cart->get_fees() as $key => $fee ) {
+        $fee_name = $fee->name;
+        if ( strpos( $fee_name, $custom_tag ) !== false || strpos( $fee_name, '[CTH]' ) !== false || strpos( $fee_name, $option->surcharge_name ) !== false ) {
+            unset( $cart->fees[ $key ] );
+        }
+    }
+    
+    $cart->add_fee( $final_fee_label, $surcharge_amount, true, $option->tax_class );
 }
 add_action( 'woocommerce_cart_calculate_fees', 'cth_apply_customer_surcharge' );
 
