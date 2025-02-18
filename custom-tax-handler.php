@@ -3,24 +3,21 @@
  * Plugin Name: Custom Tax and Surcharge Handler by PixelTeich
  * Plugin URI: https://pixelteich.de
  * Description: Passt die Mehrwertsteuer und Zuschläge basierend auf der Kundenart und Steuerklasse an.
- * Version: 5.4.4
+ * Version: 5.4.5
  * 
  * Author: Jan Teichmann
  * Author URI: https://pixelteich.de
  */
 
- if ( ! defined( 'ABSPATH' ) ) {
+if ( ! defined( 'ABSPATH' ) ) {
     exit; // Exit if accessed directly.
 }
 
 define( 'CTH_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
-// Einbinden der benötigten Dateien aus der neuen Ordnerstruktur.
+// Lade Dateien, die auch im Frontend benötigt werden:
 require_once CTH_PLUGIN_DIR . 'includes/checkout/db-init.php';
 require_once CTH_PLUGIN_DIR . 'includes/checkout/session-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/backend/admin-menu.php';
-require_once CTH_PLUGIN_DIR . 'includes/backend/admin-order.php';
-require_once CTH_PLUGIN_DIR . 'includes/backend/tax-surcharge-settings.php';
 require_once CTH_PLUGIN_DIR . 'includes/checkout/helpers.php';
 require_once CTH_PLUGIN_DIR . 'includes/checkout/ajax-handler.php';
 require_once CTH_PLUGIN_DIR . 'includes/checkout/order-meta-handler.php';
@@ -28,7 +25,14 @@ require_once CTH_PLUGIN_DIR . 'includes/checkout/save-customer-type.php';
 require_once CTH_PLUGIN_DIR . 'includes/checkout/surcharge-handler.php';
 require_once CTH_PLUGIN_DIR . 'includes/checkout/tax-class-handler.php';
 require_once CTH_PLUGIN_DIR . 'includes/checkout/tax-handler.php';
-require_once CTH_PLUGIN_DIR . 'includes/backend/ajax-handler.php';
+
+// Lade Admin-Dateien nur, wenn im Admin-Bereich:
+if ( is_admin() ) {
+    require_once CTH_PLUGIN_DIR . 'includes/backend/admin-menu.php';
+    require_once CTH_PLUGIN_DIR . 'includes/backend/admin-order.php';
+    require_once CTH_PLUGIN_DIR . 'includes/backend/tax-surcharge-settings.php';
+    require_once CTH_PLUGIN_DIR . 'includes/backend/ajax-handler.php';
+}
 
 // Plugin-Aktivierung: Initialisiert die benötigten Datenbanktabellen.
 register_activation_hook( __FILE__, 'cth_init_db_tables' );
@@ -61,7 +65,6 @@ function cth_enqueue_frontend_assets() {
 add_action( 'wp_enqueue_scripts', 'cth_enqueue_frontend_assets' );
 
 // Frontend: Anzeige der Kundenart-Radio-Buttons als Teil der Kundeninformationen
-// (Wir verwenden den Hook 'woocommerce_before_checkout_billing_form', sodass die Auswahl über den Kundeninformationen – z. B. über dem Namensfeld – erscheint).
 add_action( 'woocommerce_before_checkout_billing_form', 'cth_display_checkout_customer_type_options', 10 );
 
 // Danke-Seite: Darstellung der ausgewählten Kundenart.
