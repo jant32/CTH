@@ -18,9 +18,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-// Sicherstellen, dass wp_create_nonce() verfügbar ist
-if ( ! function_exists( 'wp_create_nonce' ) ) {
-    require_once( ABSPATH . 'wp-includes/pluggable.php' );
+// Sicherstellen, dass die Funktion submit_button() verfügbar ist (sie wird im Admin-Bereich benötigt).
+if ( ! function_exists( 'submit_button' ) ) {
+    require_once( ABSPATH . 'wp-admin/includes/template.php' );
 }
 
 // Formularverarbeitung für die Kundenart-Einstellungen und den Custom Fee Tag
