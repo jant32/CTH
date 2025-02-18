@@ -11,29 +11,46 @@
  * wp_custom_tax_surcharge_handler gespeichert.
  *
  * Mit dem Abschnitt "Anpassungen" kannst Du einen Custom Fee Tag definieren, der überall dort verwendet wird,
- * wo bisher "[CTH]" als Marker genutzt wurde. Du gibst nur die Zeichenfolge (max. 8 Zeichen) ein – sie wird dann in eckigen Klammern gespeichert.
+ * wo bisher "[CTH]" als Marker genutzt wurde. Du gibst nur die Zeichenfolge (max. 8 Zeichen) ein – sie wird dann in eckigen Klammern angezeigt.
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
+// Diese Seite ist nur im Admin-Bereich relevant.
+if ( ! is_admin() ) {
+    return;
 }
 
-// Sicherstellen, dass die Funktion submit_button() verfügbar ist (sie wird im Admin-Bereich benötigt).
-if ( ! function_exists( 'submit_button' ) ) {
+// Stelle sicher, dass die benötigten Funktionen (wie wp_nonce_field und wp_create_nonce) verfügbar sind.
+if ( ! function_exists( 'wp_nonce_field' ) ) {
     require_once( ABSPATH . 'wp-admin/includes/template.php' );
+}
+
+if ( ! isset( $_POST['cth_settings_submit'] ) && ! isset( $_GET['delete'] ) ) {
+    // Hier können auch andere Initialisierungen erfolgen, falls nötig.
 }
 
 // Formularverarbeitung für die Kundenart-Einstellungen und den Custom Fee Tag
 if ( isset( $_POST['cth_settings_submit'] ) && check_admin_referer( 'cth_settings_nonce', 'cth_settings_nonce_field' ) ) {
-    // Hier würde der Code zum Speichern neuer Kundenart-Einträge stehen (falls vorhanden)
+    // Speichere neue Kundenart-Einträge in wp_custom_tax_surcharge_handler – dieser Code ist hier aus Platzgründen nicht enthalten.
     // ...
-
-    // Speichere den Custom Fee Tag
+    
+    // Speichere den Custom Fee Tag:
     if ( isset( $_POST['cth_custom_fee_tag'] ) ) {
-        // Hole nur maximal 8 Zeichen (strip_tags zum Sicherheitszweck)
+        // Begrenze die Eingabe auf maximal 8 Zeichen, entferne HTML-Tags und trimme Leerzeichen.
         $custom_tag = substr( strip_tags( trim( $_POST['cth_custom_fee_tag'] ) ), 0, 8 );
-        // Speichere den Tag in den Optionen (ohne eckige Klammern; diese fügen wir später hinzu)
+        // Speichere den Tag in den Optionen (ohne eckige Klammern – diese werden später hinzugefügt)
         update_option( 'cth_custom_fee_tag', $custom_tag );
+    }
+}
+
+// Beispiel: Verarbeitung des Löschens eines bestehenden Eintrags (falls implementiert)
+if ( isset( $_GET['delete'] ) && !empty( $_GET['delete'] ) ) {
+    $delete_id = intval( $_GET['delete'] );
+    if ( isset( $_GET['_wpnonce'] ) && wp_verify_nonce( $_GET['_wpnonce'], 'cth_delete_setting_' . $delete_id ) ) {
+        global $wpdb;
+        $wpdb->delete( $wpdb->prefix . 'custom_tax_surcharge_handler', array( 'id' => $delete_id ), array( '%d' ) );
+        echo '<div class="notice notice-success is-dismissible"><p>Eintrag gelöscht.</p></div>';
+    } else {
+        echo '<div class="notice notice-error is-dismissible"><p>Nonce-Überprüfung fehlgeschlagen.</p></div>';
     }
 }
 
@@ -72,7 +89,7 @@ $settings = $wpdb->get_results( "SELECT * FROM $table_name" );
         <?php submit_button( 'Speichern', 'primary', 'cth_settings_submit' ); ?>
     </form>
 
-    <!-- Abschnitt "Anpassungen" für den Custom Fee Tag -->
+    <!-- Neuer Abschnitt "Anpassungen" für den Custom Fee Tag -->
     <h2>Anpassungen</h2>
     <form method="post">
         <?php wp_nonce_field( 'cth_settings_nonce', 'cth_settings_nonce_field' ); ?>
@@ -82,7 +99,7 @@ $settings = $wpdb->get_results( "SELECT * FROM $table_name" );
                 <td>
                     <?php 
                     $custom_fee_tag = get_option( 'cth_custom_fee_tag', 'CTH' );
-                    // Zeige nur die innere Zeichenfolge an (ohne eckige Klammern)
+                    // Zeige die Zeichenfolge ohne Klammern an
                     ?>
                     <input name="cth_custom_fee_tag" type="text" id="cth_custom_fee_tag" value="<?php echo esc_attr( $custom_fee_tag ); ?>" class="regular-text" maxlength="8" placeholder="z.B. MYTAG">
                     <p class="description">Gib bis zu 8 Zeichen ein. Der Tag wird in eckigen Klammern angezeigt (z.B. [MYTAG]).</p>
