@@ -18,10 +18,15 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Sicherstellen, dass wp_create_nonce() verfügbar ist
+if ( ! function_exists( 'wp_create_nonce' ) ) {
+    require_once( ABSPATH . 'wp-includes/pluggable.php' );
+}
+
 // Formularverarbeitung für die Kundenart-Einstellungen und den Custom Fee Tag
 if ( isset( $_POST['cth_settings_submit'] ) && check_admin_referer( 'cth_settings_nonce', 'cth_settings_nonce_field' ) ) {
-    // Speichere neue Kundenart-Einträge (bestehender Code, falls vorhanden)
-    // ... (hier der Code für das Speichern der Einträge in wp_custom_tax_surcharge_handler) ...
+    // Hier würde der Code zum Speichern neuer Kundenart-Einträge stehen (falls vorhanden)
+    // ...
 
     // Speichere den Custom Fee Tag
     if ( isset( $_POST['cth_custom_fee_tag'] ) ) {
